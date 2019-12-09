@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Ulysses Music Client</string>
+    <string name="app_name">Christine</string>
     <string name="add_song">Add Song</string>
     <string name="manage_unsorted">Manage Unsorted</string>
     <string name="enter_song_name">Enter song name</string>

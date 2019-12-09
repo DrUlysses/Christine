@@ -1,4 +1,0 @@
-#Mon Dec 09 00:13:41 EET 2019
-base.0=/home/ulysses/AndroidStudioProjects/UlyssesMusicClient/app/build/intermediates/transforms/dexMerger/debug/0
-path.0=classes.dex
-renamed.0=classes.dex

@@ -4,3 +4,13 @@ Server/.idea/
 Server/base.db
 
 Server/storage.py
+
+Client/.gradle/
+
+Client/.idea/
+
+Client/local.properties
+
+Client/Client.iml
+
+Client/app/build/

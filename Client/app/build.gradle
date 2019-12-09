@@ -2,13 +2,13 @@ apply plugin: 'com.android.application'
 apply plugin: 'com.google.protobuf'
 
 android {
-    compileSdkVersion 22
+    compileSdkVersion 26
     defaultConfig {
-        applicationId 'player.christine.client'
+        applicationId "player.christine.client"
         minSdkVersion 16
-        targetSdkVersion 22
+        targetSdkVersion 26
         versionCode 1
-        versionName 'pre-alpha-teaser'
+        versionName "pre-alpha"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         maxSdkVersion 22
     }
