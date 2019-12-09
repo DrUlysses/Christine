@@ -1,0 +1,74 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="player.christine.client"
+4    android:versionCode="1"
+5    android:versionName="pre-alpha-teaser" >
+6
+7    <uses-sdk
+8        android:maxSdkVersion="22"
+8-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml
+9        android:minSdkVersion="16"
+9-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml
+10        android:targetSdkVersion="22" />
+10-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml
+11
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:4:5-66
+12-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:4:22-64
+13    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+13-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:5:5-79
+13-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:5:22-77
+14    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+14-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:6:5-80
+14-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:6:22-78
+15    <uses-permission android:name="android.permission.WAKE_LOCK" />
+15-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:7:5-67
+15-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:7:22-65
+16
+17    <application
+17-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:8:5-25:19
+18        android:name="com.example.christine.ServerSocketApplication"
+18-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:15:9-69
+19        android:allowBackup="true"
+19-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:9:9-35
+20        android:debuggable="true"
+21        android:icon="@mipmap/ic_launcher"
+21-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:10:9-43
+22        android:label="@string/app_name"
+22-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:11:9-41
+23        android:roundIcon="@mipmap/ic_launcher_round"
+23-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:12:9-54
+24        android:supportsRtl="true"
+24-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:13:9-35
+25        android:theme="@style/Theme.AppCompat.Light.NoActionBar" >
+25-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:14:9-65
+26        <activity android:name="com.example.christine.ManageUnsortedActivity" />
+26-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:16:9-81
+26-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:16:19-78
+27        <activity android:name="com.example.christine.AddSongActivity" />
+27-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:17:9-74
+27-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:17:19-71
+28        <activity android:name="com.example.christine.MainActivity" >
+28-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:18:9-24:20
+28-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:18:19-68
+29            <intent-filter>
+29-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:19:13-23:29
+30                <action android:name="android.intent.action.MAIN" />
+30-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:20:17-69
+30-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:20:25-66
+31
+32                <category android:name="android.intent.category.LAUNCHER" />
+32-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:22:17-77
+32-->/home/ulysses/Christine/Client/app/src/main/AndroidManifest.xml:22:27-74
+33            </intent-filter>
+34        </activity>
+35
+36        <meta-data
+36-->[com.android.support:design:26.0.2] /home/ulysses/.gradle/caches/transforms-2/files-2.1/510ff7bfc769d2357c4a03a76adfd42c/design-26.0.2/AndroidManifest.xml:26:9-28:38
+37            android:name="android.support.VERSION"
+37-->[com.android.support:design:26.0.2] /home/ulysses/.gradle/caches/transforms-2/files-2.1/510ff7bfc769d2357c4a03a76adfd42c/design-26.0.2/AndroidManifest.xml:27:13-51
+38            android:value="26.0.2" />
+38-->[com.android.support:design:26.0.2] /home/ulysses/.gradle/caches/transforms-2/files-2.1/510ff7bfc769d2357c4a03a76adfd42c/design-26.0.2/AndroidManifest.xml:28:13-35
+39    </application>
+40
+41</manifest>

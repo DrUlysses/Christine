@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ManageUnsortedActivity">
+
+    <EditText
+        android:id="@+id/unsorted_song_title_field"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
+        android:ems="10"
+        android:hint="@string/title"
+        android:inputType="textPersonName"
+        app:layout_constraintEnd_toEndOf="@+id/unsorted_song_cover_view"
+        app:layout_constraintTop_toBottomOf="@+id/unsorted_song_cover_view" />
+
+    <EditText
+        android:id="@+id/unsorted_song_album_field"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ems="10"
+        android:hint="@string/album"
+        android:inputType="textPersonName"
+        app:layout_constraintEnd_toEndOf="@+id/unsorted_song_title_field"
+        app:layout_constraintStart_toStartOf="@+id/unsorted_song_title_field"
+        app:layout_constraintTop_toBottomOf="@+id/unsorted_song_title_field" />
+
+    <EditText
+        android:id="@+id/unsorted_song_artist_field"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ems="10"
+        android:hint="@string/artist"
+        android:inputType="textPersonName"
+        app:layout_constraintEnd_toEndOf="@+id/unsorted_song_album_field"
+        app:layout_constraintStart_toStartOf="@+id/unsorted_song_album_field"
+        app:layout_constraintTop_toBottomOf="@+id/unsorted_song_album_field" />
+
+    <ImageView
+        android:id="@+id/unsorted_song_cover_view"
+        android:layout_width="334dp"
+        android:layout_height="175dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
+        android:contentDescription="@string/song_cover"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_report_image" />
+
+    <Button
+        android:id="@+id/next_unsorted_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="32dp"
+        android:layout_marginRight="32dp"
+        android:layout_marginBottom="32dp"
+        android:text="@string/next"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <Button
+        android:id="@+id/previous_unsorted_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginLeft="32dp"
+        android:layout_marginBottom="32dp"
+        android:text="@string/previous"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <EditText
+        android:id="@+id/unsorted_song_cover_url_edit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ems="10"
+        android:hint="@string/cover_url"
+        android:inputType="textPersonName"
+        app:layout_constraintEnd_toEndOf="@+id/unsorted_song_artist_field"
+        app:layout_constraintStart_toStartOf="@+id/unsorted_song_artist_field"
+        app:layout_constraintTop_toBottomOf="@+id/unsorted_song_artist_field" />
+
+    <TextView
+        android:id="@+id/unsorted_song_title_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
+        android:text="@string/title"
+        app:layout_constraintBottom_toBottomOf="@+id/unsorted_song_title_field"
+        app:layout_constraintEnd_toStartOf="@+id/unsorted_song_title_field"
+        app:layout_constraintHorizontal_bias="0.784"
+        app:layout_constraintStart_toStartOf="@+id/unsorted_song_cover_view"
+        app:layout_constraintTop_toTopOf="@+id/unsorted_song_title_field" />
+
+    <TextView
+        android:id="@+id/unsorted_song_album_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
+        android:text="@string/album"
+        app:layout_constraintBottom_toBottomOf="@+id/unsorted_song_album_field"
+        app:layout_constraintEnd_toEndOf="@+id/unsorted_song_title_text"
+        app:layout_constraintStart_toStartOf="@+id/unsorted_song_title_text"
+        app:layout_constraintTop_toTopOf="@+id/unsorted_song_album_field" />
+
+    <TextView
+        android:id="@+id/unsorted_song_artist_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/artist"
+        app:layout_constraintBottom_toBottomOf="@+id/unsorted_song_artist_field"
+        app:layout_constraintEnd_toEndOf="@+id/unsorted_song_album_text"
+        app:layout_constraintStart_toStartOf="@+id/unsorted_song_album_text"
+        app:layout_constraintTop_toTopOf="@+id/unsorted_song_artist_field" />
+
+    <TextView
+        android:id="@+id/unsorted_song_cover_url_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/cover_url"
+        app:layout_constraintBottom_toBottomOf="@+id/unsorted_song_cover_url_edit"
+        app:layout_constraintEnd_toEndOf="@+id/unsorted_song_artist_text"
+        app:layout_constraintStart_toStartOf="@+id/unsorted_song_artist_text"
+        app:layout_constraintTop_toTopOf="@+id/unsorted_song_cover_url_edit" />
+
+</android.support.constraint.ConstraintLayout>

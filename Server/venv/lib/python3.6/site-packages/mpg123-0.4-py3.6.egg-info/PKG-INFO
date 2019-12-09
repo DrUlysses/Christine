@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: mpg123
+Version: 0.4
+Summary: Python wrapper for libmpg123
+Home-page: https://github.com/20tab/mpg123-python
+Author: 20Tab S.r.l.
+Author-email: info@20tab.com
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
