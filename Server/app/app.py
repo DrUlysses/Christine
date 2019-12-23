@@ -16,6 +16,7 @@ socketio = SocketIO()
 # Can be moved to somewhere but I got circular imports
 @socketio.on('connect', namespace='/status')
 def on_connect():
+    print('User connected to the status socket')
     emit('new_user', {'data': 'connected'})
 
 

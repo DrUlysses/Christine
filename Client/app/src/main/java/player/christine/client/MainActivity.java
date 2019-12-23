@@ -99,7 +99,10 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.options_menu, menu);
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-        if (isRemote && !mSocket.connected()) mSocket.connect();
+        if (isRemote && !mSocket.connected()) {
+            initializeSocket();
+            mSocket.connect();
+        }
         menu.findItem(R.id.remote_library_checkbox).setChecked(isRemote);
         return super.onCreateOptionsMenu(menu);
     }
@@ -117,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
                 boolean isChecked = !item.isChecked();
                 item.setChecked(isChecked);
                 if (isChecked) {
+                    initializeSocket();
                     mSocket.connect();
                 } else {
                     mSocket.disconnect();
@@ -136,8 +140,7 @@ public class MainActivity extends AppCompatActivity {
                     preferencesEditor = preferences.edit();
                     preferencesEditor.putString("remoteIP", input.getText().toString());
                     preferencesEditor.apply();
-                    ServerSocketApplication serverSocketApp = (ServerSocketApplication) getApplication();
-                    mSocket = serverSocketApp.resetSocket();
+                    initializeSocket();
                 });
                 builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
 
@@ -149,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void initializeVariables() {
+    private void initializeSocket() {
         ServerSocketApplication serverSocketApp = (ServerSocketApplication) getApplication();
         mSocket = serverSocketApp.resetSocket();
         mSocket.on(Socket.EVENT_CONNECT, onConnect);
@@ -157,7 +160,10 @@ public class MainActivity extends AppCompatActivity {
         mSocket.on(Socket.EVENT_CONNECT_ERROR, onConnectError);
         mSocket.on(Socket.EVENT_CONNECT_TIMEOUT, onConnectError);
         mSocket.on("status", onStatus);
+    }
 
+    private void initializeVariables() {
+        initializeSocket();
         toolbar = findViewById(R.id.main_toolbar);
         viewPager = findViewById(R.id.main_layout_pager);
         preferences = getSharedPreferences("Preferences", MODE_PRIVATE);

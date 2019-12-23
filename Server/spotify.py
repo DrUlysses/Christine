@@ -36,7 +36,7 @@ def get_metadata(song_name, song_artist):
     token = get_token()
     results = None
     if token:
-        spotify = spotipy.Spotify(auth=token)
+        spotify = Spotify(auth=token)
         results = spotify.search(q=song_name + ' ' + song_artist, limit=1, type="track")
     else:
         print("Can't get token")

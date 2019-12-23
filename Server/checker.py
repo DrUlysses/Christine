@@ -20,7 +20,10 @@ import spotify
 # Become "title - artist.mp3" return list {[title], [artist]}
 def divide_name(song_name):
     result = song_name.split(' - ')
-    result[1] = result[1].split('.')[0]
+    try:
+        result[1] = result[1].split('.')[0]
+    except IndexError:
+        result.append('Unknown Artist')
     return result
 
 

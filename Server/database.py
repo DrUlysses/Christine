@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import storage
 import checker
+from file_manager import rescan_temp_folder
 from os.path import join
 
 engine = create_engine("sqlite:///" + join(storage.APP_DIR, "base.db"), echo=True,
@@ -92,7 +93,11 @@ def get_path(song_name):
 
 def get_status(song_name):
     song_name = checker.divide_name(song_name)
-    status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
+    try:
+        status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
+    except AttributeError:
+        rescan_temp_folder()
+        status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
     return status
 
 
@@ -104,9 +109,10 @@ def update_info(title, album, artist):
     session.commit()
 
 
-def update_path(old_path, new_path):
+def update_path(old_path, new_path, status='added'):
     song = session.query(Song).filter_by(path=old_path).first()
     song.path = new_path
+    song.status = status
     session.commit()
 
 
@@ -115,6 +121,9 @@ def get_by_path(path):
     return res
 
 
-def get_songs():
-    res = session.query(Song.path, Song.title, Song.artist)
+def get_songs(status=None):
+    if status is not None:
+        res = session.query(Song.path, Song.title, Song.artist).filter_by(status=status)
+    else:
+        res = session.query(Song.path, Song.title, Song.artist)
     return res

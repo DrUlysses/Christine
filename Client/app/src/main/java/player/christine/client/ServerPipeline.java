@@ -70,7 +70,7 @@ class ServerPipeline {
         @Override
         protected Boolean doInBackground(Void... voids) {
             try (
-                    DataOutputStream output = new DataOutputStream(connection.getOutputStream());
+                    DataOutputStream output = new DataOutputStream(connection.getOutputStream())
             ) {
                 output.writeBytes("--" + boundary + CRLF);
                 output.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"" + songName + "\"" + CRLF);

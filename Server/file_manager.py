@@ -2,7 +2,6 @@ import os
 import checker
 import converter
 import chardet
-from acrcloud.recognizer import ACRCloudRecognizer
 from mutagen.mp3 import EasyMP3 as MP3
 import json
 import storage
@@ -29,9 +28,10 @@ def recognize(path):
         'title': '',
         'artist': '',
     }
-    re = ACRCloudRecognizer(storage.config)
     # Load song metadata from acrcloud
     try:
+        from acrcloud.recognizer import ACRCloudRecognizer
+        re = ACRCloudRecognizer(storage.config)
         recognized_data = json.loads(re.recognize_by_file(path, 0))
         recognized_song = recognized_data['metadata']['music'][0]
         recognized['title'] = recognized_song['title']
@@ -60,16 +60,6 @@ def add_song(file_name, path):
                       duration=int(file.info.length * 1000), status=u'added')
 
 
-def add_folder(path):
-    for file in os.listdir(path):
-        file_path = os.path.join(path, file)
-        if os.path.isfile(file_path):
-            add_song(file, file_path)
-        else:
-            add_folder(file_path)
-        os.remove(os.path.join(path, file))
-
-
 # 'path/artist/album/Title - album.mp3'
 def move_to_storage(path):
     if os.path.isfile(path) and database.is_added(path):
@@ -83,24 +73,29 @@ def move_to_storage(path):
         name = os.path.split(path)[1]
         new_path = os.path.join(new_path, name)
         os.rename(path, new_path)
-        database.update_path(path, new_path)
+        database.update_path(path, new_path, 'saved')
         return True
     else:
         return False
 
 
-def sort_song(song_name):
-    if is_in_temp(song_name):
-        add_song(song_name, True)
-    else:
-        return None
-
-
 def create_unmanaged_songs_form():
     result = {}
+    length = 0
     for file in os.listdir(storage.MUSIC_TEMP_STORAGE):
         result[file] = database.get_status(file)
+        if length < storage.UNMANAGED_SONGS_LIST_LENGTH:
+            length += 1
+        else:
+            break
     return result
+
+
+def rescan_temp_folder():
+    for dirpath, _, filenames in os.walk(storage.MUSIC_TEMP_STORAGE):
+        for file in filenames:
+            if not database.has_song(file):
+                add_song(file, os.path.join(dirpath, file))
 
 
 def is_in_temp(song_name):
