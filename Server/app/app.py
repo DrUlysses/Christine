@@ -31,6 +31,16 @@ def on_play_pause():
     emit('is_playing', {'data': player.pause()})
 
 
+@socketio.on('play_next', namespace='/status')
+def on_play_pause():
+    emit('is_playing', {'data': player.next()})
+
+
+@socketio.on('play_previous', namespace='/status')
+def on_play_pause():
+    emit('is_playing', {'data': player.previous()})
+
+
 @socketio.on_error_default
 def error_handler(e):
     print('An error has occurred: ' + str(e))

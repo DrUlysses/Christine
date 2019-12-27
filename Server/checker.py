@@ -87,5 +87,5 @@ def proceed_recognition_form(form):
         data=urlopen(form["cover"]).read()
     )
     file.save()
-    database.update_info(form["title"], form["album"], form["artist"])
+    database.update_info(form["title"], form["album"], form["artist"], form["song_path"])
     return True

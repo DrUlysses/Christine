@@ -101,8 +101,8 @@ def get_status(song_name):
     return status
 
 
-def update_info(title, album, artist):
-    song = session.query(Song).filter_by(title=title, artist=artist).first()
+def update_info(title, album, artist, path):
+    song = session.query(Song).filter_by(path=path).first()
     song.title = title
     song.artist = artist
     song.album = album

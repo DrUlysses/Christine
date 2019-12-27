@@ -7,13 +7,19 @@ from time import sleep
 class Player:
     def __init__(self):
         self.is_playing = False
-        master_slave = openpty()
-        self.master = master_slave[0]
-        self.slave = master_slave[1]
+        self.master, self.slave = openpty()
         if self.playlist_get():
             with open('music/status', 'w+') as file:
                 self.p = Popen(['mpg123', '--list', 'music/playlist'], stdin=self.master, stdout=file, stderr=file)
         write(self.slave, b's')
+
+    def restart(self):
+        self.p.kill()
+        if self.playlist_get():
+            with open('music/status', 'w+') as file:
+                self.p = Popen(['mpg123', '--list', 'music/playlist'], stdin=self.master, stdout=file, stderr=file)
+        if not self.is_playing:
+            write(self.slave, b's')
 
     def pause(self):
         write(self.slave, b's')
@@ -22,9 +28,11 @@ class Player:
 
     def next(self):
         write(self.slave, b'f')
+        return self.is_playing
 
     def previous(self):
         write(self.slave, b'd')
+        return self.is_playing
 
     def beginning(self):
         write(self.slave, b'b')
@@ -97,16 +105,13 @@ class Player:
             res = line[2:]
 
     def set_playlist(self, playlist):
-        is_empty = not self.playlist_get()
         with open('music/playlist', 'w') as file:
             if type(playlist) == str:
                 file.write("%s\n" % playlist)
             else:
                 for item in playlist:
                     file.write("%s\n" % item)
-        if is_empty:
-            with open('music/status', 'w+') as file:
-                self.p = Popen(['mpg123', '--list', 'music/playlist'], stdin=self.master, stdout=file, stderr=file)
+        self.restart()
 
     # TODO: This is dumb
     @staticmethod
