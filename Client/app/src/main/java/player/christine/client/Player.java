@@ -165,7 +165,11 @@ final class Player {
                 e.printStackTrace();
             }
         }
-        play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
+        try {
+            play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
+        } catch (Exception e) {
+            play(Uri.parse(currentTrackSequence.get(0)), currentContext);
+        }
     }
 
     static void shuffleCurrentArtistSongs() {
