@@ -36,9 +36,10 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Locale;
+import java.util.SortedMap;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import io.socket.client.Socket;
@@ -93,6 +94,8 @@ public class MainActivity extends AppCompatActivity {
 
         pauseButton.setOnClickListener(setupPause());
         mininizedPauseButton.setOnClickListener(setupPause());
+
+        Player.wakePlayer();
     }
 
     @Override
@@ -246,8 +249,8 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             return false;
         }
-        HashMap<String, Pair<String, String>> songList = new HashMap<>();
-        HashMap<String, HashMap<String, String>> artistsSongsList = new HashMap<>();
+        SortedMap<String, Pair<String, String>> songList = new TreeMap<>();
+        SortedMap<String, SortedMap<String, String>> artistsSongsList = new TreeMap<>();
         Pair<String, String> tempPair;
         for (int i = 0; i < JSONStorage.length(); i++) {
             try {
@@ -255,14 +258,13 @@ public class MainActivity extends AppCompatActivity {
                 String songTitle = (String) tempObject.get(1);
                 String songArtist = (String) tempObject.get(2);
                 String songLocation = (String) tempObject.get(0);
-
                 tempPair = new Pair<>(songTitle, songArtist);
                 songList.put(songLocation, tempPair);
 
                 if (artistsSongsList.containsKey(songArtist)) {
                     artistsSongsList.get(songArtist).put(songTitle, songLocation);
                 } else {
-                    HashMap<String, String> tempMap = new HashMap<>();
+                    SortedMap<String, String> tempMap = new TreeMap<>();
                     tempMap.put(songTitle, songLocation);
                     artistsSongsList.put(songArtist, tempMap);
                 }

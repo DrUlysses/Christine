@@ -7,14 +7,12 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class ArtistsArrayAdapter extends BaseAdapter {
     private final List<String> idList = new ArrayList<>();
 
     public ArtistsArrayAdapter(List<String> map) {
-        Collections.sort(map);
         idList.addAll(map);
     }
 
