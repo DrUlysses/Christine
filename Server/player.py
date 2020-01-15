@@ -86,6 +86,7 @@ class Player:
         for line in reversed(list(open("music/status"))):
             if line.startswith('>'):
                 return path.abspath(line[2:]).strip('\n')
+        return 'none'
 
     def get_next_path(self):
         self.update_list()
@@ -95,6 +96,7 @@ class Player:
                 found = True
             if found:
                 return path.abspath(line[2:]).strip('\n')
+        return 'none'
 
     def get_previous_path(self):
         self.update_list()
@@ -103,6 +105,7 @@ class Player:
             if line.startswith('>'):
                 return path.abspath(res).strip('\n')
             res = line[2:]
+        return 'none'
 
     def set_playlist(self, playlist):
         with open('music/playlist', 'w') as file:

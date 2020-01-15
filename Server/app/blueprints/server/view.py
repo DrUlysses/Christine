@@ -114,6 +114,10 @@ def send_list():
         print('Got list failed: Empty type or content')
         return {'error': True}, 400
     elif message['type'] == "playlist":
+        playlist = []
+        for item in message['content']:
+            if database.is_added(item):
+                playlist.append(item)
         player.set_playlist(message['content'])
         print('Changed playlist from got list')
         return {'success': True}, 200
