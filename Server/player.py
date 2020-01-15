@@ -14,7 +14,10 @@ class Player:
         write(self.slave, b's')
 
     def restart(self):
-        self.p.kill()
+        try:
+            self.p.kill()
+        except AttributeError:
+            return
         if self.playlist_get():
             with open('music/status', 'w+') as file:
                 self.p = Popen(['mpg123', '--list', 'music/playlist'], stdin=self.master, stdout=file, stderr=file)

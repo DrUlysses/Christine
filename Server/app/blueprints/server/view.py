@@ -128,20 +128,32 @@ def send_list():
 
 @blueprint.route('/current_song', methods=['GET'])
 def send_current_song():
+    path = player.get_current_path()
+    if path is 'none':
+        print('Failed to send current song: none is playing')
+        return {'error': True}, 400
     print('Sent current song')
-    return send_file(player.get_current_path())
+    return send_file(path)
 
 
 @blueprint.route('/previous_song', methods=['GET'])
 def send_previous_song():
+    path = player.get_previous_path()
+    if path is 'none':
+        print('Failed to send previous song: none is playing')
+        return {'error': True}, 400
     print('Sent previous song')
-    return send_file(player.get_previous_path())
+    return send_file(path)
 
 
 @blueprint.route('/next_song', methods=['GET'])
 def send_next_song():
+    path = player.get_next_path()
+    if path is 'none':
+        print('Failed to send next song: none is playing')
+        return {'error': True}, 400
     print('Sent next song')
-    return send_file(player.get_next_path())
+    return send_file(path)
 
 
 def allowed_file(filename, allowed_extensions):
