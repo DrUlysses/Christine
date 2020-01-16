@@ -118,7 +118,7 @@ def send_list():
         for item in message['content']:
             if database.is_added(item):
                 playlist.append(item)
-        player.set_playlist(message['content'])
+        player.set_playlist(playlist)
         print('Changed playlist from got list')
         return {'success': True}, 200
     else:

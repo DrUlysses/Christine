@@ -17,7 +17,7 @@ class Player:
         try:
             self.p.kill()
         except AttributeError:
-            return
+            pass
         if self.playlist_get():
             with open('music/status', 'w+') as file:
                 self.p = Popen(['mpg123', '--list', 'music/playlist'], stdin=self.master, stdout=file, stderr=file)

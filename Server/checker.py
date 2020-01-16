@@ -21,6 +21,7 @@ import spotify
 def divide_name(song_name):
     result = song_name.split(' - ')
     try:
+        # TODO: remove only from the last dot
         result[1] = result[1].split('.')[0]
     except IndexError:
         result.append('Unknown Artist')

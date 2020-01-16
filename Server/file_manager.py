@@ -44,10 +44,9 @@ def recognize(path):
 def add_song(file_name, path):
     # Convert if not mp3
     if not file_name.endswith(".mp3"):
-        converter.convert(
-            path,
-            os.path.join(storage.MUSIC_TEMP_STORAGE, os.path.splitext(file_name)[0] + '.mp3')
-        )
+        if not converter.convert(path, os.path.join(storage.MUSIC_TEMP_STORAGE,
+                                                    os.path.splitext(file_name)[0] + '.mp3')):
+            return
         # TODO: check if need to remove old file
         path = os.path.join(storage.MUSIC_TEMP_STORAGE, os.path.splitext(file_name)[0] + '.mp3')
     # Read tags if necessary
