@@ -28,17 +28,17 @@ def get_status():
 
 @socketio.on('play_pause', namespace='/status')
 def on_play_pause():
-    emit('is_playing', {'data': player.pause()})
+    emit('is_playing', {'status': player.pause()})
 
 
 @socketio.on('play_next', namespace='/status')
 def on_play_pause():
-    emit('is_playing', {'data': player.next()})
+    emit('is_playing', {'status': player.next()})
 
 
 @socketio.on('play_previous', namespace='/status')
 def on_play_pause():
-    emit('is_playing', {'data': player.previous()})
+    emit('is_playing', {'status': player.previous()})
 
 
 @socketio.on_error_default

@@ -52,7 +52,8 @@ class Player:
         t = path.getmtime("music/status")
         write(self.slave, b'l')
         while t == path.getmtime("music/status"):
-            sleep(0.01)
+            # tough spot
+            sleep(0.1)
 
     # Most stupid and idiotic method of all time
     def get_current_time(self):
@@ -60,7 +61,7 @@ class Player:
             return [0, 0]
         s = None
         while s is None:
-            sleep(0.01)
+            sleep(0.1)
             s = self.get_status_last_line()
         x = s
         while x == s and s[0] != '_' and s[0] != '>':
@@ -68,7 +69,7 @@ class Player:
             write(self.slave, b'v')
             self.pause()
             write(self.slave, b'v')
-            sleep(0.01)
+            sleep(0.1)
             s = self.get_status_last_line()
         res = s[13:30].split('+')
         res[0] = self.time_to_ms(res[0])
@@ -77,7 +78,7 @@ class Player:
 
     def get_status(self):
         a = self.get_current_time()
-        sleep(0.01)
+        sleep(0.1)
         b = self.get_current_time()
         if a[0] == b[0]:
             return 'paused'
