@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private static ImageView mininizedCoverView;
     private Button mininizedPauseButton;
 
-    private Socket mSocket;
+    private static Socket mSocket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,6 +95,8 @@ public class MainActivity extends AppCompatActivity {
         pauseButton.setOnClickListener(setupPause());
         mininizedPauseButton.setOnClickListener(setupPause());
 
+        boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
+        if (isRemote) updateRemoteLists();
         Player.wakePlayer();
     }
 
@@ -163,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
         mSocket.on(Socket.EVENT_CONNECT_ERROR, onConnectError);
         mSocket.on(Socket.EVENT_CONNECT_TIMEOUT, onConnectError);
         mSocket.on("status", onStatus);
+        mSocket.on("is_playing", onIsPlaying);
     }
 
     private void initializeVariables() {
@@ -217,6 +220,10 @@ public class MainActivity extends AppCompatActivity {
         tabLayout.setupWithViewPager(viewPager);
     });
 
+    public static void socketSend(String message) {
+        mSocket.emit(message);
+    }
+
     private Emitter.Listener onConnectError = args -> runOnUiThread(() -> {
         preferencesEditor = preferences.edit();
         preferencesEditor.putBoolean("isRemoteLibrary", false);
@@ -237,6 +244,18 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(), status, Toast.LENGTH_LONG).show();
         } catch (JSONException e) {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+            mSocket.disconnect();
+        }
+    });
+
+    private Emitter.Listener onIsPlaying = args -> runOnUiThread(() -> {
+        JSONObject data = (JSONObject) args[0];
+        String status;
+        try {
+            status = data.getString("status");
+            Toast.makeText(getApplicationContext(), status, Toast.LENGTH_SHORT).show();
+        } catch (JSONException e) {
+            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
             mSocket.disconnect();
         }
     });

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
 final class Player {
@@ -95,8 +96,9 @@ final class Player {
         if (isRemote) {
             try {
                 songPath = Uri.parse(new ServerPipeline.GetSong("current").execute().get());
-            } catch (InterruptedException | ExecutionException | IOException e) {
+            } catch (InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
+                return;
             }
         }
 
@@ -161,14 +163,16 @@ final class Player {
                 JSONArray tempArr = new JSONArray(currentTrackSequence.values());
                 temp.put("content", tempArr);
                 new ServerPipeline.SendList(temp.toString()).execute().get();
-            } catch (JSONException | InterruptedException | ExecutionException | IOException e) {
+            } catch (JSONException | InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
+                player = null;
+                return;
             }
         }
         try {
             play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
         } catch (Exception e) {
-            play(Uri.parse(currentTrackSequence.get(0)), currentContext);
+            return;
         }
     }
 
@@ -284,19 +288,19 @@ final class Player {
     }
 
     private static void nextRemoteSong() {
-
+        MainActivity.socketSend("play_next");
     }
 
     private static void previousRemoteSong() {
-
+        MainActivity.socketSend("play_previous");
     }
 
     private static void pauseRemote() {
-
+        MainActivity.socketSend("play_pause");
     }
 
     private static void resumeRemote() {
-
+        MainActivity.socketSend("play_pause");
     }
 
     static void playPrevious() {
@@ -324,16 +328,24 @@ final class Player {
     }
 
     static void pause() {
-        player.pause();
-        position = player.getCurrentPosition();
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
         if (isRemote) pauseRemote();
+        try {
+            player.pause();
+            position = player.getCurrentPosition();
+        } catch (IllegalStateException e) {
+            player = null;
+            return;
+        }
     }
 
     static void resume() {
         player.seekTo(position);
         player.start();
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-        if (isRemote) resumeRemote();
+        if (isRemote) {
+            player.setVolume(0, 0);
+            resumeRemote();
+        }
     }
 }
