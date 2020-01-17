@@ -25,7 +25,7 @@ def add_song():
         path = os.path.join(current_app.config.get('MUSIC_TEMP_STORAGE'), filename)
         file.save(path)
         fm.add_song(filename, path)
-        print('Added song with add song form')
+        print('Added song with add song form: ' + file.filename)
         return {'success': True}, 200
     else:
         print('Got add song form failed: No filename')
@@ -47,7 +47,7 @@ def manage_tags_get():
         return {'error': True}, 400
     if allowed_file(song_name, current_app.config.get('ALLOWED_EXTENSIONS')):
         result = jsonify(create_recognition_form(song_name))
-        print('Sent manage tags form')
+        print('Sent manage tags form: ' + song_name)
         return result
     else:
         print('Asked for manage tags form failed: File type not allowed')
@@ -86,16 +86,16 @@ def become_list():
         return {'error': True}, 400
     elif list_type == "unmanaged":
         result = jsonify(fm.create_unmanaged_songs_form())
-        print('Sent unmanaged list')
+        print('Sent unmanaged list: \n' + result)
         return result
     elif list_type == "playlist":
         result = jsonify(player.playlist_get())
-        print('Sent playlist list')
+        print('Sent playlist list: \n' + result)
         return result
     elif list_type == "songs":
         # TODO: add possibility to request various types
         result = jsonify(database.get_songs())
-        print('Sent songs list')
+        print('Sent songs list: \n' + result)
         return result
     else:
         print('Ask for list failed')
@@ -115,11 +115,15 @@ def send_list():
         return {'error': True}, 400
     elif message['type'] == "playlist":
         playlist = []
+        if message['current_track_num'] == '':
+            print('Got playlist failed: Empty current track number')
+            return {'error': True}, 400
         for item in message['content']:
             if database.is_added(item):
                 playlist.append(item)
         player.set_playlist(playlist)
-        print('Changed playlist from got list')
+        player.scroll_playlist(message['current_track_num'])
+        print('Changed playlist from got list: \n' + playlist)
         return {'success': True}, 200
     else:
         print('Got list failed')

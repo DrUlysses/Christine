@@ -120,6 +120,10 @@ class Player:
                     file.write("%s\n" % item)
         self.restart()
 
+    def scroll_playlist(self, pos):
+        for i in range(pos):
+            self.next()
+
     # TODO: This is dumb
     @staticmethod
     def get_status_last_line():
