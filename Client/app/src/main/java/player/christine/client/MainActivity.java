@@ -40,6 +40,7 @@ import java.util.Locale;
 import java.util.SortedMap;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
 import io.socket.client.Socket;
@@ -239,11 +240,23 @@ public class MainActivity extends AppCompatActivity {
     private Emitter.Listener onStatus = args -> runOnUiThread(() -> {
         JSONObject data = (JSONObject) args[0];
         String status;
+        Integer time;
         try {
+            time = data.getInt("current_time");
+            Player.setPosition(time);
             status = data.getString("status");
-            Toast.makeText(getApplicationContext(), status, Toast.LENGTH_LONG).show();
+            if (status.equals("true")) {
+                status = "playing";
+                Player.setIsRemotePlaying(true);
+                Player.resume();
+            } else if (status.equals("false")) {
+                status = "paused";
+                Player.setIsRemotePlaying(false);
+                Player.pause();
+            }
+            Toast.makeText(getApplicationContext(), status, Toast.LENGTH_SHORT).show();
         } catch (JSONException e) {
-            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
             mSocket.disconnect();
         }
     });
@@ -251,8 +264,20 @@ public class MainActivity extends AppCompatActivity {
     private Emitter.Listener onIsPlaying = args -> runOnUiThread(() -> {
         JSONObject data = (JSONObject) args[0];
         String status;
+        Integer time;
         try {
+            time = data.getInt("current_time");
+            Player.setPosition(time);
             status = data.getString("status");
+            if (status.equals("true")) {
+                status = "playing";
+                Player.setIsRemotePlaying(true);
+                Player.resume();
+            } else if (status.equals("false")) {
+                status = "paused";
+                Player.setIsRemotePlaying(false);
+                Player.pause();
+            }
             Toast.makeText(getApplicationContext(), status, Toast.LENGTH_SHORT).show();
         } catch (JSONException e) {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -264,7 +289,7 @@ public class MainActivity extends AppCompatActivity {
         JSONArray JSONStorage;
         try {
             JSONStorage = new JSONArray(new ServerPipeline.BecomeList("songs").execute().get());
-        } catch (JSONException | InterruptedException | ExecutionException | IOException e) {
+        } catch (JSONException | InterruptedException | ExecutionException | IOException | CancellationException e) {
             e.printStackTrace();
             return false;
         }

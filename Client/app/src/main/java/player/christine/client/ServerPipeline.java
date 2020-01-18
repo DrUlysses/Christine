@@ -243,17 +243,17 @@ class ServerPipeline {
                 case "current":
                     this.GET_URL += getCurrentSongAdress;
                     this.file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                            "ulysses_music_current.mp3");
+                            "christine_current.mp3");
                     break;
                 case "next":
                     this.GET_URL += getNextSongAdress;
                     this.file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                            "ulysses_music_next.mp3");
+                            "christine_next.mp3");
                     break;
                 case "previous":
                     this.GET_URL += getPreviousSongAdress;
                     this.file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                            "ulysses_music_previous.mp3");
+                            "christine_previous.mp3");
                     break;
                 default:
                     throw new IOException("Wrong GetSong song type");

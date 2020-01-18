@@ -32,7 +32,6 @@ final class Player {
     static MediaPlayer player;
     private static int position;
     private static int currentTrackNum;
-    private static int currentTrackIndex;
     private static int currentTracksAmount;
     static String currentChosenArtist;
     private static LinkedHashMap<Integer, String> currentTrackSequence;
@@ -41,6 +40,10 @@ final class Player {
     private static SharedPreferences preferences;
     private static SharedPreferences.Editor preferencesEditor;
     private static Context currentContext;
+    private static Uri currentRemoteSongPath;
+    private static Uri nextRemoteSongPath;
+    private static Uri previousRemoteSongPath;
+    private static boolean isRemotePlaying;
 
     private Player() {
         preferences  = currentContext.getSharedPreferences("Preferences", Context.MODE_PRIVATE);
@@ -49,8 +52,7 @@ final class Player {
         setSongList(fillSongList());
         setArtistsSongsList(fillArtistsSongsList());
         position = 0;
-        currentTrackNum = preferences.getInt("currentTrackNum", 1);
-        currentTrackIndex = preferences.getInt("currentTrackNum", 0);
+        currentTrackNum = preferences.getInt("currentTrackNum", 0);
         currentTracksAmount = preferences.getInt("currentTracksAmount", 1);
         currentTrackSequence = new LinkedHashMap<>();
         Set<String> tempTrackSequence = preferences.getStringSet("currentTrackSequence", null);
@@ -85,29 +87,62 @@ final class Player {
         new Player();
     }
 
-    private static void play(Uri songPath, Context context) {
-        currentContext = context;
-        String title = currentSongs.get(songPath.toString()).first;
-        String artist = currentSongs.get(songPath.toString()).second;
-        if (player != null) {
-            player.release();
-        }
-        boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-        if (isRemote) {
+    private static void updateCurrentRemoteSong() {
+        // Current next and prev. Just update all current
+        if (preferences.getBoolean("isRemoteLibrary", false)) {
             try {
-                songPath = Uri.parse(new ServerPipeline.GetSong("current").execute().get());
+                currentRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("current").execute().get());
+                nextRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("next").execute().get());
+                previousRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("previous").execute().get());
             } catch (InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
                 return;
             }
         }
+    }
 
+    private static void updateNextRemoteSong() {
+        // Like go forward - download new next song
+        if (preferences.getBoolean("isRemoteLibrary", false)) {
+            try {
+                previousRemoteSongPath = currentRemoteSongPath;
+                currentRemoteSongPath = nextRemoteSongPath;
+                nextRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("next").execute().get());
+            } catch (InterruptedException | ExecutionException | IOException | CancellationException e) {
+                e.printStackTrace();
+                return;
+            }
+        }
+    }
+
+    private static void updatePreviousRemoteSong() {
+        // Like go backward - download new previous song
+        if (preferences.getBoolean("isRemoteLibrary", false)) {
+            try {
+                nextRemoteSongPath = currentRemoteSongPath;
+                currentRemoteSongPath = previousRemoteSongPath;
+                previousRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("previous").execute().get());
+            } catch (InterruptedException | ExecutionException | IOException | CancellationException e) {
+                e.printStackTrace();
+                return;
+            }
+        }
+    }
+
+    private static void play(Uri songPath, Context context) {
+        currentContext = context;
+        String title = currentSongs.get(currentTrackSequence.get(currentTrackNum)).first;
+        String artist = currentSongs.get(currentTrackSequence.get(currentTrackNum)).second;
+        if (player != null) player.release();
+        position = 0;
         player = MediaPlayer.create(currentContext, songPath);
         if (player != null) {
             player.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK);
             setupPlayer();
             MainActivity.changePlayingSong(title, artist, songPath.toString());
             player.start();
+           if (preferences.getBoolean("isRemoteLibrary", false))
+               player.setVolume(0, 0);
         } else {
             Toast.makeText(context, R.string.player_error, Toast.LENGTH_LONG).show();
         }
@@ -115,14 +150,14 @@ final class Player {
 
     private static void setupPlayer() {
         player.setOnCompletionListener(mp -> {
-            if (currentTrackIndex < currentTrackSequence.size() - 1) {
-                currentTrackNum = (int) currentTrackSequence.keySet().toArray()[++currentTrackIndex];
-                boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-                if (isRemote) nextRemoteSong();
-                play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
-            } else {
+            if (currentTrackNum++ < currentTrackSequence.size()) {
+                if (preferences.getBoolean("isRemoteLibrary", false)) {
+                    updateNextRemoteSong();
+                    play(currentRemoteSongPath, currentContext);
+                } else
+                    play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
+            } else
                 player.stop();
-            }
         });
     }
 
@@ -133,10 +168,10 @@ final class Player {
         // Oneline command is here too long, good old one is shorter
         currentTrackSequence.clear();
         List<String> songsPaths = new ArrayList<>(currentSongs.keySet());
-        for (int i = currentTrackNum; i < currentTracksAmount; i++) {
+        for (int i = 0; i < currentTracksAmount; i++)
             currentTrackSequence.put(i, songsPaths.get(i));
-        }
         updateSavedPlaylist();
+        updateRemotePlaylist();
         playCurrentSong();
     }
 
@@ -147,14 +182,14 @@ final class Player {
         List<String> songsPaths = new ArrayList<>(currentArtistsSongs.get(currentChosenArtist).values());
         currentTracksAmount = songsPaths.size();
         currentTrackSequence.clear();
-        for (int i = currentTrackNum; i < currentTracksAmount; i++) {
+        for (int i = 0; i < currentTracksAmount; i++)
             currentTrackSequence.put(i, songsPaths.get(i));
-        }
         updateSavedPlaylist();
+        updateRemotePlaylist();
         playCurrentSong();
     }
 
-    private static void playCurrentSong() {
+    private static void updateRemotePlaylist() {
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
         if (isRemote) {
             JSONObject temp = new JSONObject();
@@ -162,6 +197,7 @@ final class Player {
                 temp.put("type", "playlist");
                 JSONArray tempArr = new JSONArray(currentTrackSequence.values());
                 temp.put("content", tempArr);
+                temp.put("current_track_num", currentTrackNum);
                 new ServerPipeline.SendList(temp.toString()).execute().get();
             } catch (JSONException | InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
@@ -169,8 +205,16 @@ final class Player {
                 return;
             }
         }
+    }
+
+    private static void playCurrentSong() {
         try {
-            play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
+            if (preferences.getBoolean("isRemoteLibrary", false)) {
+                updateCurrentRemoteSong();
+                play(currentRemoteSongPath, currentContext);
+                resumeRemote();
+            } else
+                play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
         } catch (Exception e) {
             return;
         }
@@ -180,43 +224,27 @@ final class Player {
         currentTrackNum = 0;
         String artist = currentChosenArtist;
         List<String> songsPaths = new ArrayList<>(currentArtistsSongs.get(artist).values());
+        Collections.shuffle(songsPaths);
         currentTracksAmount = songsPaths.size();
         currentTrackSequence.clear();
-        List<Integer> indexes = new ArrayList<>();
-        for (int i = currentTrackNum; i < currentTracksAmount; i++) {
-            indexes.add(i);
-        }
-        Collections.shuffle(indexes);
-        for (Integer i : indexes) {
+        for (int i = currentTrackNum; i < currentTracksAmount; i++)
             currentTrackSequence.put(i, songsPaths.get(i));
-        }
-        currentTrackIndex = 0;
-        currentTrackNum = (int) currentTrackSequence.keySet().toArray()[Player.currentTrackIndex];
-        // get file name and send it to new view
-        String tempTitle = currentSongs.get(currentTrackSequence.get(currentTrackNum)).first;
-        String tempArtist = currentChosenArtist;
-        Uri tempPath = Uri.parse(currentArtistsSongs.get(tempArtist).get(tempTitle));
         updateSavedPlaylist();
-        play(tempPath, currentContext);
+        updateRemotePlaylist();
+        playCurrentSong();
     }
 
     static void shuffleSongs() {
         currentTrackNum = 0;
         List<String> songsPaths = new ArrayList<>(currentSongs.keySet());
+        Collections.shuffle(songsPaths);
         currentTracksAmount = currentSongs.size();
         currentTrackSequence.clear();
-        List<Integer> indexes = new ArrayList<>();
-        for (int i = currentTrackNum; i < currentTracksAmount; i++) {
-            indexes.add(i);
-        }
-        Collections.shuffle(indexes);
-        for (Integer i : indexes) {
+        for (int i = currentTrackNum; i < currentTracksAmount; i++)
             currentTrackSequence.put(i, songsPaths.get(i));
-        }
-        currentTrackIndex = 0;
-        currentTrackNum = (int) currentTrackSequence.keySet().toArray()[currentTrackIndex];
         updateSavedPlaylist();
-        play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
+        updateRemotePlaylist();
+        playCurrentSong();
     }
 
     static void setSongList(SortedMap<String, Pair<String, String>> songs) {
@@ -227,7 +255,6 @@ final class Player {
     static void setArtistsSongsList(SortedMap<String, SortedMap<String, String>> artistsSongs) {
         currentArtistsSongs = artistsSongs;
     }
-
 
     static SortedMap<String, Pair<String, String>> fillSongList() {
         ContentResolver contentResolver = currentContext.getContentResolver();
@@ -249,10 +276,8 @@ final class Player {
                 tempPair = new Pair<>(tempTitle, tempArtist);
                 result.put(cursor.getString(songLocation), tempPair);
             } while (cursor.moveToNext());
-
             cursor.close();
         }
-
         return result;
     }
 
@@ -280,10 +305,8 @@ final class Player {
                     result.put(tempArtist, tempMap);
                 }
             } while (cursor.moveToNext());
-
             cursor.close();
         }
-
         return result;
     }
 
@@ -296,19 +319,21 @@ final class Player {
     }
 
     private static void pauseRemote() {
-        MainActivity.socketSend("play_pause");
+        if (isRemotePlaying) MainActivity.socketSend("play_pause");
     }
 
     private static void resumeRemote() {
-        MainActivity.socketSend("play_pause");
+        if (!isRemotePlaying) MainActivity.socketSend("play_pause");
     }
 
     static void playPrevious() {
-        if (currentTrackIndex > 0) {
-            currentTrackNum = (int) currentTrackSequence.keySet().toArray()[--currentTrackIndex];
-            boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-            if (isRemote) previousRemoteSong();
-            play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
+        if (currentTrackNum-- > 0) {
+            if (preferences.getBoolean("isRemoteLibrary", false)) {
+                previousRemoteSong();
+                play(previousRemoteSongPath, currentContext);
+                updatePreviousRemoteSong();
+            } else
+                play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
         } else {
             pause();
         }
@@ -316,11 +341,13 @@ final class Player {
     }
 
     static void playNext() {
-        if (currentTrackIndex < currentTrackSequence.size() - 1) {
-            currentTrackNum = (int) currentTrackSequence.keySet().toArray()[++currentTrackIndex];
-            boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-            if (isRemote) nextRemoteSong();
-            play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
+        if (currentTrackNum++ < currentTrackSequence.size()) {
+            if (preferences.getBoolean("isRemoteLibrary", false)) {
+                nextRemoteSong();
+                play(nextRemoteSongPath, currentContext);
+                updateNextRemoteSong();
+            } else
+                play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
         } else {
             pause();
         }
@@ -328,24 +355,42 @@ final class Player {
     }
 
     static void pause() {
-        boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-        if (isRemote) pauseRemote();
         try {
-            player.pause();
-            position = player.getCurrentPosition();
-        } catch (IllegalStateException e) {
+            if (player.isPlaying()) {
+                boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
+                if (isRemote) pauseRemote();
+                player.pause();
+                position = player.getCurrentPosition();
+            }
+        } catch (IllegalStateException | NullPointerException e) {
+            player = null;
+            return;
+        }
+
+    }
+
+    static void resume() {
+        try {
+            if (!player.isPlaying()) {
+                player.seekTo(position);
+                player.start();
+                boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
+                if (isRemote) {
+                    player.setVolume(0, 0);
+                    resumeRemote();
+                }
+            }
+        } catch (IllegalStateException | NullPointerException e) {
             player = null;
             return;
         }
     }
 
-    static void resume() {
-        player.seekTo(position);
-        player.start();
-        boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-        if (isRemote) {
-            player.setVolume(0, 0);
-            resumeRemote();
-        }
+    static void setPosition(Integer pos) {
+        position = pos;
+    }
+
+    static void setIsRemotePlaying(boolean val) {
+        isRemotePlaying = val;
     }
 }
