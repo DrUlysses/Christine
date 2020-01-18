@@ -104,14 +104,11 @@ class Player:
     def get_previous_path(self):
         self.update_list()
         found = False
-        res = ''
-        current = self.get_current_path()
-        for line in list(open(str(APP_DIR) + '/music/playlist')):
-            if line == current:
+        for line in reversed(list(open(str(APP_DIR) + '/music/status'))):
+            if line.startswith('> ' + str(APP_DIR)):
                 found = True
             if found:
-                return path.abspath(res).strip('\n')
-            res = line
+                return path.abspath(line[2:]).strip('\n')
         return 'none'
 
     def get_next_path(self):
