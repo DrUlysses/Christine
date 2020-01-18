@@ -7,7 +7,7 @@ import checker
 from file_manager import rescan_temp_folder
 from os.path import join
 
-engine = create_engine("sqlite:///" + join(storage.APP_DIR, "base.db"), echo=True,
+engine = create_engine("sqlite:///" + join(storage.APP_DIR, "base.db"), echo=False,
                        connect_args={'check_same_thread': False})
 Session = sessionmaker(bind=engine)
 session = Session()

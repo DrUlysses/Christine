@@ -87,18 +87,21 @@ def become_list():
     elif list_type == "unmanaged":
         res = fm.create_unmanaged_songs_form()
         result = jsonify()
-        print('Sent unmanaged list: \n'.join(res))
+        print('Sent unmanaged list:')
+        print(str(res))
         return result
     elif list_type == "playlist":
         res = player.playlist_get()
         result = jsonify()
-        print('Sent playlist list: \n'.join(res))
+        print('Sent playlist list:')
+        print(str(res))
         return result
     elif list_type == "songs":
         # TODO: add possibility to request various types
         res = database.get_songs()
         result = jsonify(res)
-        print('Sent songs list: \n'.join(res))
+        print('Sent songs list:')
+        print(str(res))
         return result
     else:
         print('Ask for list failed')
@@ -126,7 +129,8 @@ def send_list():
                 playlist.append(item)
         player.set_playlist(playlist)
         player.scroll_playlist(message['current_track_num'])
-        print('Changed playlist from got list: \n'.join(playlist))
+        print('Changed playlist from got list:')
+        print(str(playlist))
         return {'success': True}, 200
     else:
         print('Got list failed')
