@@ -124,7 +124,7 @@ def send_list():
         return {'error': True}, 400
     elif message['type'] == "playlist":
         playlist = []
-        track_num = message['current_track_num']
+        track_num = int(message['current_track_num'])
         if track_num == '':
             print('Got playlist failed: Empty current track number')
             return {'error': True}, 400
