@@ -1,6 +1,7 @@
 # The whole class is crap, but I have not found any better solution for lightweight player
 from os import write, openpty, path
 from subprocess import Popen  # , check_output
+from storage import PROJECT_ROOT
 from time import sleep
 
 
@@ -9,8 +10,9 @@ class Player:
         self.is_playing = False
         self.master, self.slave = openpty()
         if self.playlist_get():
-            with open('music/status', 'w+') as file:
-                self.p = Popen(['mpg123', '--list', 'music/playlist'], stdin=self.master, stdout=file, stderr=file)
+            with open(str(PROJECT_ROOT) + '/music/status', 'w+') as file:
+                self.p = Popen(['mpg123', '--list', str(PROJECT_ROOT) + '/music/playlist'], stdin=self.master,
+                               stdout=file, stderr=file)
         write(self.slave, b's')
 
     def restart(self):
@@ -19,8 +21,9 @@ class Player:
         except AttributeError:
             pass
         if self.playlist_get():
-            with open('music/status', 'w+') as file:
-                self.p = Popen(['mpg123', '--list', 'music/playlist'], stdin=self.master, stdout=file, stderr=file)
+            with open(str(PROJECT_ROOT) + '/music/status', 'w+') as file:
+                self.p = Popen(['mpg123', '--list', str(PROJECT_ROOT) + '/music/playlist'], stdin=self.master,
+                               stdout=file, stderr=file)
         if not self.is_playing:
             write(self.slave, b's')
 
@@ -30,11 +33,15 @@ class Player:
         return self.is_playing
 
     def next(self):
-        write(self.slave, b'f')
+        current = self.get_current_path()
+        while current is self.get_current_path():
+            write(self.slave, b'f')
         return self.is_playing
 
     def previous(self):
-        write(self.slave, b'd')
+        current = self.get_current_path()
+        while current is self.get_current_path():
+            write(self.slave, b'd')
         return self.is_playing
 
     def beginning(self):
@@ -49,9 +56,9 @@ class Player:
     def update_list(self):
         if not self.playlist_get():
             return
-        t = path.getmtime("music/status")
+        t = path.getmtime(str(PROJECT_ROOT) + '/music/status')
         write(self.slave, b'l')
-        while t == path.getmtime("music/status"):
+        while t == path.getmtime(str(PROJECT_ROOT) + '/music/status'):
             # tough spot
             sleep(0.1)
 
@@ -87,16 +94,16 @@ class Player:
 
     def get_current_path(self):
         self.update_list()
-        for line in reversed(list(open("music/status"))):
-            if line.startswith('> /'):
+        for line in reversed(list(open(str(PROJECT_ROOT) + '/music/status'))):
+            if line.startswith('> ' + str(PROJECT_ROOT)):
                 return path.abspath(line[2:]).strip('\n')
         return 'none'
 
     def get_previous_path(self):
         self.update_list()
         found = False
-        for line in reversed(list(open("music/status"))):
-            if line.startswith('> /'):
+        for line in reversed(list(open(str(PROJECT_ROOT) + '/music/status'))):
+            if line.startswith('> ' + str(PROJECT_ROOT)):
                 found = True
             if found:
                 return path.abspath(line[2:]).strip('\n')
@@ -105,14 +112,14 @@ class Player:
     def get_next_path(self):
         self.update_list()
         res = ''
-        for line in reversed(list(open("music/status"))):
-            if line.startswith('> /'):
+        for line in reversed(list(open(str(PROJECT_ROOT) + '/music/status'))):
+            if line.startswith('> ' + str(PROJECT_ROOT)):
                 return path.abspath(res).strip('\n')
             res = line[2:]
         return 'none'
 
     def set_playlist(self, playlist):
-        with open('music/playlist', 'w') as file:
+        with open(str(PROJECT_ROOT) + '/music/playlist', 'w') as file:
             if type(playlist) == str:
                 file.write("%s\n" % playlist)
             else:
@@ -127,7 +134,7 @@ class Player:
     # TODO: This is dumb
     @staticmethod
     def get_status_last_line():
-        for line in reversed(list(open("music/status"))):
+        for line in reversed(list(open(str(PROJECT_ROOT) + '/music/status'))):
             return line
 
     @staticmethod
@@ -140,13 +147,13 @@ class Player:
 
     @staticmethod
     def playlist_get():
-        with open("music/playlist") as f:
+        with open(str(PROJECT_ROOT) + '/music/playlist') as f:
             res = f.readlines()
             return res
 
     @staticmethod
     def playlist_append(song_path):
-        with open('music/playlist', 'a') as file:
+        with open(str(PROJECT_ROOT) + '/music/playlist', 'a') as file:
             file.write("%s\n" % song_path)
 
 
