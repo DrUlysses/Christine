@@ -126,4 +126,6 @@ def get_songs(status=None):
         res = session.query(Song.path, Song.title, Song.artist).filter_by(status=status)
     else:
         res = session.query(Song.path, Song.title, Song.artist)
+    if res.first() is None:
+        return None
     return res

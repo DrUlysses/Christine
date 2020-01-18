@@ -46,7 +46,7 @@ def on_play_pause():
 @socketio.on('play_previous', namespace='/status')
 def on_play_pause():
     status = player.previous()
-    print('Playing next. Now is_playing is ' + str(status))
+    print('Playing previous. Now is_playing is ' + str(status))
     time = player.get_current_time()
     emit('is_playing', {'status': status, 'current_time': time[0], 'remaining_time': time[1]})
 
@@ -65,6 +65,7 @@ def create_app(config_object=storage):
     register_commands(app)
     app.wsgi_app = ProxyFix(app.wsgi_app)
     socketio.init_app(app)
+    print('Started')
     return app
 
 

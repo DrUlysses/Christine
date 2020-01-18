@@ -99,6 +99,9 @@ def become_list():
     elif list_type == "songs":
         # TODO: add possibility to request various types
         res = database.get_songs()
+        if res is None:
+            print('Ask for songs list failed: Songs list is empty')
+            return {'error': True}, 400
         result = jsonify(res)
         print('Sent songs list:')
         print(str(res))
@@ -121,16 +124,18 @@ def send_list():
         return {'error': True}, 400
     elif message['type'] == "playlist":
         playlist = []
-        if message['current_track_num'] == '':
+        track_num = message['current_track_num']
+        if track_num == '':
             print('Got playlist failed: Empty current track number')
             return {'error': True}, 400
         for item in message['content']:
             if database.is_added(item):
                 playlist.append(item)
         player.set_playlist(playlist)
-        player.scroll_playlist(message['current_track_num'])
+        player.scroll_playlist(track_num)
         print('Changed playlist from got list:')
         print(str(playlist))
+        print('Play from song number: ' + str(track_num))
         return {'success': True}, 200
     else:
         print('Got list failed')

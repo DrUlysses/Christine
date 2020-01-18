@@ -92,7 +92,7 @@ class Player:
                 return path.abspath(line[2:]).strip('\n')
         return 'none'
 
-    def get_next_path(self):
+    def get_previous_path(self):
         self.update_list()
         found = False
         for line in reversed(list(open("music/status"))):
@@ -102,7 +102,7 @@ class Player:
                 return path.abspath(line[2:]).strip('\n')
         return 'none'
 
-    def get_previous_path(self):
+    def get_next_path(self):
         self.update_list()
         res = ''
         for line in reversed(list(open("music/status"))):
