@@ -88,7 +88,7 @@ class Player:
     def get_current_path(self):
         self.update_list()
         for line in reversed(list(open("music/status"))):
-            if line.startswith('>'):
+            if line.startswith('> /'):
                 return path.abspath(line[2:]).strip('\n')
         return 'none'
 
@@ -96,7 +96,7 @@ class Player:
         self.update_list()
         found = False
         for line in reversed(list(open("music/status"))):
-            if line.startswith('>'):
+            if line.startswith('> /'):
                 found = True
             if found:
                 return path.abspath(line[2:]).strip('\n')
@@ -106,7 +106,7 @@ class Player:
         self.update_list()
         res = ''
         for line in reversed(list(open("music/status"))):
-            if line.startswith('>'):
+            if line.startswith('> /'):
                 return path.abspath(res).strip('\n')
             res = line[2:]
         return 'none'

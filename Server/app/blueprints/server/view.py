@@ -143,7 +143,7 @@ def send_current_song():
     if path is 'none':
         print('Failed to send current song: none is playing')
         return {'error': True}, 400
-    print('Sent current song')
+    print('Sent current song: ' + str(path))
     return send_file(path)
 
 
@@ -153,7 +153,7 @@ def send_previous_song():
     if path is 'none':
         print('Failed to send previous song: none is playing')
         return {'error': True}, 400
-    print('Sent previous song')
+    print('Sent previous song: ' + str(path))
     return send_file(path)
 
 
@@ -163,7 +163,7 @@ def send_next_song():
     if path is 'none':
         print('Failed to send next song: none is playing')
         return {'error': True}, 400
-    print('Sent next song')
+    print('Sent next song: ' + str(path))
     return send_file(path)
 
 
