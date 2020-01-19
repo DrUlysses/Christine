@@ -54,6 +54,7 @@ def add_song(title, artist, path="", album="", duration=0, tags="", text=0, stat
     if exists is None:
         session.add(song)
     session.commit()
+    return True
 
 
 # Add playlist(s) (tags) to the song
@@ -63,6 +64,7 @@ def add_tags(title, album, artist, tags):
             song.tags += tag + ', '
         session.merge(song)
     session.commit()
+    return True
 
 
 # Get songs from spotify
@@ -70,6 +72,7 @@ def add_spotify_songs():
     songs = spotify.get_tracks()
     for song in songs:
         add_song(title=song[0], album=song[1], artist=song[2], duration=song[3])
+    return True
 
 
 def has_song(song_name):
@@ -87,7 +90,10 @@ def get_path(song_name):
     res = None
     if has_song(song_name):
         song_name = checker.divide_name(song_name)
-        res = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().path
+        try:
+            res = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().path
+        except AttributeError:
+            pass
     return res
 
 
@@ -110,6 +116,7 @@ def update_info(title, album, artist, path):
     song.artist = artist
     song.album = album
     session.commit()
+    return True
 
 
 def update_path(old_path, new_path, status='added'):
@@ -117,6 +124,7 @@ def update_path(old_path, new_path, status='added'):
     song.path = new_path
     song.status = status
     session.commit()
+    return True
 
 
 def get_by_path(path):

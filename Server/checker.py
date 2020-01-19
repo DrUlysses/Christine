@@ -1,8 +1,9 @@
 from mutagen.id3 import ID3, APIC
 from urllib.request import urlopen
 from mutagen.mp3 import EasyMP3 as MP3
-from storage import MUSIC_TEMP_STORAGE
+from storage import MUSIC_TEMP_STORAGE, MUSIC_STORAGE_PATH
 from os.path import join
+from os import walk, sep
 import database
 
 import file_manager
@@ -21,8 +22,7 @@ import spotify
 def divide_name(song_name):
     result = song_name.split(' - ')
     try:
-        # TODO: remove only from the last dot
-        result[1] = result[1].split('.')[0]
+        result[1] = result[1].split('.')[:-1]
     except IndexError:
         result.append('Unknown Artist')
     return result
@@ -90,3 +90,27 @@ def proceed_recognition_form(form):
     file.save()
     database.update_info(form["title"], form["album"], form["artist"], form["song_path"])
     return True
+
+
+def check_music_folder():
+    print('-- Started music folder check --')
+    files = 0
+    for dirpath, _, filenames in walk(MUSIC_STORAGE_PATH):
+        for _ in filenames:
+            files += 1
+    done = 0
+    changed = 0
+    for dirpath, _, filenames in walk(MUSIC_STORAGE_PATH):
+        for file in filenames:
+            path = join(dirpath, file)
+            if database.get_by_path(path) is None:
+                old_path = database.get_path(path.split(sep)[-1])
+                if old_path is None:
+                    print('Problem with: ' + str(path))
+                else:
+                    database.update_path(old_path, path)
+                    changed += 1
+            done += 1
+            print('Done: ' + str(done) + ' out of ' + str(files) + '. Changed: ' + str(changed))
+    print('-- Ended music folder check --')
+

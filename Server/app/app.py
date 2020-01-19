@@ -5,6 +5,7 @@ from flask_socketio import SocketIO, emit
 import storage
 from app import commands, blueprints, extensions
 from player import player
+from checker import check_music_folder
 
 """
     Creates flask application
@@ -25,6 +26,12 @@ def get_status():
     print('Status requested')
     time = player.get_current_time()
     emit('status', {'status': player.get_status(), 'current_time': time[0], 'remaining_time': time[1]})
+
+
+@socketio.on('check_music_folder', namespace='/status')
+def rescan_music_folder():
+    print('Requested to recheck music folder')
+    emit('new_ones', {'new_ones': check_music_folder()})
 
 
 @socketio.on('play_pause', namespace='/status')
