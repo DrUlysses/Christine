@@ -3,6 +3,7 @@ import checker
 import converter
 import chardet
 from mutagen.mp3 import EasyMP3 as MP3
+from mutagen.mp3 import HeaderNotFoundError
 import json
 import storage
 import database
@@ -52,7 +53,10 @@ def add_song(file_name, path):
     # Read tags if necessary
     # if correct_tags:
     #    checker.correct_tags(file_path)
-    file = MP3(path)
+    try:
+        file = MP3(path)
+    except HeaderNotFoundError:
+        return
     # Add Song to database
     divided_name = checker.divide_name(file_name)
     database.add_song(title=divided_name[0], artist=divided_name[1], path=path,

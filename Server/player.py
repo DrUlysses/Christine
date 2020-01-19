@@ -14,6 +14,8 @@ class Player:
                 self.p = Popen(['mpg123', '--list', str(APP_DIR) + '/music/playlist'], stdin=self.master,
                                stdout=file, stderr=file)
         write(self.slave, b's')
+        self.playlist_length = len(self.playlist_get())
+        self.current_song_number = 0
 
     def restart(self):
         try:
@@ -26,6 +28,7 @@ class Player:
                                stdout=file, stderr=file)
         if not self.is_playing:
             write(self.slave, b's')
+        return True
 
     def pause(self):
         write(self.slave, b's')
@@ -33,36 +36,45 @@ class Player:
         return self.is_playing
 
     def next(self):
-        current = self.get_current_path()
-        write(self.slave, b'f')
-        while current == self.get_current_path():
-            sleep(0.1)
+        if self.current_song_number < len(self.playlist_get()) - 1:
+            current = self.get_current_path()
+            write(self.slave, b'f')
+            while current == self.get_current_path():
+                sleep(0.1)
+            self.current_song_number += 1
         return self.is_playing
 
     def previous(self):
-        current = self.get_current_path()
-        write(self.slave, b'd')
-        while current == self.get_current_path():
-            sleep(0.1)
+        if self.current_song_number > 0:
+            current = self.get_current_path()
+            write(self.slave, b'd')
+            while current == self.get_current_path():
+                sleep(0.1)
+            self.current_song_number -= 1
         return self.is_playing
 
     def beginning(self):
         write(self.slave, b'b')
+        return True
 
     def forwards(self):
         write(self.slave, b'>')
+        return True
 
     def backwards(self):
         write(self.slave, b'<')
+        return True
 
     def update_list(self):
         if not self.playlist_get():
-            return
+            return False
         t = path.getmtime(str(APP_DIR) + '/music/status')
         write(self.slave, b'l')
         while t == path.getmtime(str(APP_DIR) + '/music/status'):
             # tough spot
             sleep(0.1)
+        self.playlist_length = len(self.playlist_get())
+        return True
 
     # Most stupid and idiotic method of all time
     def get_current_time(self):
@@ -128,10 +140,14 @@ class Player:
                 for item in playlist:
                     file.write("%s\n" % item)
         self.restart()
+        return self.is_playing
 
     def scroll_playlist(self, pos):
-        for i in range(pos):
+        if pos < 1 or pos > len(self.playlist_get()) - 1 - self.current_song_number:
+            return False
+        for i in range(pos - 1):
             self.next()
+        return True
 
     # TODO: This is dumb
     @staticmethod
