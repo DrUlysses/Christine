@@ -97,7 +97,10 @@ def get_status(song_name):
         status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
     except AttributeError:
         rescan_temp_folder()
-        status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
+        try:
+            status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
+        except AttributeError:
+            return 'error'
     return status
 
 

@@ -86,6 +86,7 @@ def create_unmanaged_songs_form():
     result = {}
     length = 0
     for file in os.listdir(storage.MUSIC_TEMP_STORAGE):
+        print('Adding ' + str(file) + ' to Manage Song Form')
         result[file] = database.get_status(file)
         if length < storage.UNMANAGED_SONGS_LIST_LENGTH:
             length += 1
@@ -95,10 +96,18 @@ def create_unmanaged_songs_form():
 
 
 def rescan_temp_folder():
+    print('-- Started temp folder rescan --')
+    files = 0
+    for dirpath, _, filenames in os.walk(storage.MUSIC_TEMP_STORAGE):
+        for _ in filenames:
+            files += 1
+    done = 0
     for dirpath, _, filenames in os.walk(storage.MUSIC_TEMP_STORAGE):
         for file in filenames:
+            done += 1
             if not database.has_song(file):
                 add_song(file, os.path.join(dirpath, file))
+            print('Done: ' + str(done) + ' out of ' + str(files))
 
 
 def is_in_temp(song_name):
