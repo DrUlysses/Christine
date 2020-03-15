@@ -13,17 +13,26 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-        android:name="player.christine.client.ServerSocketApplication"
+        android:name="player.christine.client.misc.ServerSocketApplication"
         tools:ignore="GoogleAppIndexingWarning">
         <activity android:name="player.christine.client.ManageUnsortedActivity" />
         <activity android:name="player.christine.client.AddSongActivity" />
         <activity android:name="player.christine.client.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service android:name=".musicplayer.MediaPlaybackService">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+        <receiver android:name="android.support.v4.media.session.MediaButtonReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

@@ -47,21 +47,16 @@ def add_song(file_name, path):
     if not file_name.endswith(".mp3"):
         if not converter.convert(path, os.path.join(storage.MUSIC_TEMP_STORAGE,
                                                     os.path.splitext(file_name)[0] + '.mp3')):
-            return
-        # TODO: check if need to remove old file
+            return False
         path = os.path.join(storage.MUSIC_TEMP_STORAGE, os.path.splitext(file_name)[0] + '.mp3')
-    # Read tags if necessary
-    # if correct_tags:
-    #    checker.correct_tags(file_path)
     try:
         file = MP3(path)
     except HeaderNotFoundError:
         return False
     # Add Song to database
     divided_name = checker.divide_name(file_name)
-    database.add_song(title=divided_name[0], artist=divided_name[1], path=path,
-                      duration=int(file.info.length * 1000), status=u'added')
-    return True
+    return database.add_song(title=divided_name[0], artist=divided_name[1], path=path,
+                             duration=int(file.info.length * 1000), status=u'added')
 
 
 # 'path/artist/album/Title - album.mp3'
@@ -89,7 +84,9 @@ def create_unmanaged_songs_form():
     for dirpath, _, filenames in os.walk(storage.MUSIC_TEMP_STORAGE):
         for file in filenames:
             print('Adding ' + str(file) + ' to Manage Song Form')
-            result[file] = database.get_status(file)
+            status = database.get_status_by_path(os.path.join(dirpath, file))
+            if status == "added" or status == "error":
+                result[file] = status
             if length < storage.UNMANAGED_SONGS_LIST_LENGTH:
                 length += 1
             else:
@@ -108,7 +105,7 @@ def rescan_temp_folder():
     for dirpath, _, filenames in os.walk(storage.MUSIC_TEMP_STORAGE):
         for file in filenames:
             done += 1
-            if not database.has_song(file):
+            if not database.has_song_by_path(os.path.join(dirpath, file)):
                 if add_song(file, os.path.join(dirpath, file)):
                     new_ones += 1
             print('Done: ' + str(done) + ' out of ' + str(files) + '. New: ' + str(new_ones))
@@ -117,4 +114,10 @@ def rescan_temp_folder():
 
 
 def is_in_temp(song_name):
-    return song_name in os.listdir(storage.MUSIC_TEMP_STORAGE) and database.has_song(song_name)
+    found = False
+    for dirpath, _, filenames in os.walk(storage.MUSIC_TEMP_STORAGE):
+        for file in filenames:
+            if file == song_name:
+                found = True
+                break
+    return found and database.has_song_by_name(song_name)

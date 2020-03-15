@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
+import player.christine.client.misc.ServerPipeline;
+
 public class AddSongActivity extends AppCompatActivity {
 
     private Button chooseFileButton;
@@ -57,7 +59,7 @@ public class AddSongActivity extends AppCompatActivity {
             startActivityForResult(Intent.createChooser(intent, getResources().getString(R.string.select_a_file)), 10);
         });
         doneChoosingFileButton.setOnClickListener(v -> {
-            if(isFileChosen && enteredSongName.getText().length() > 0 && enteredSongArtist.getText().length() > 0) {
+            if (isFileChosen && enteredSongName.getText().length() > 0 && enteredSongArtist.getText().length() > 0) {
                 // Just to simplify extraction. Can be moved to new method
                 String oldSongName = chosenSongName.getText().toString();
                 String songExtension = oldSongName.substring(oldSongName.lastIndexOf("."));
@@ -70,7 +72,7 @@ public class AddSongActivity extends AppCompatActivity {
                     if (successfullySended == null) {
                         Toast tempToast = Toast.makeText(this, getResources().getString(R.string.some_error), Toast.LENGTH_LONG);
                         tempToast.show();
-                    } else if (successfullySended){
+                    } else if (successfullySended) {
                         chosenFile.delete();
                     }
                 } catch (IOException e) {

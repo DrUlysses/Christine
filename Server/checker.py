@@ -3,7 +3,8 @@ from urllib.request import urlopen
 from mutagen.mp3 import EasyMP3 as MP3
 from storage import MUSIC_TEMP_STORAGE, MUSIC_STORAGE_PATH
 from os.path import join
-from os import walk, sep
+from os import walk, sep, listdir
+from shutil import rmtree
 import database
 
 import file_manager
@@ -22,7 +23,7 @@ import spotify
 def divide_name(song_name):
     result = song_name.split(' - ')
     try:
-        result[1] = result[1].split('.')[:-1]
+        result[1] = ''.join(result[1].split('.')[:-1])
     except IndexError:
         result.append('Unknown Artist')
     return result
@@ -31,7 +32,10 @@ def divide_name(song_name):
 def create_recognition_form(song_name):
     title, artist = divide_name(song_name)
 
-    song_path = join(MUSIC_TEMP_STORAGE, song_name)
+    song_path = database.get_path(song_name)
+    if not song_name.endswith(".mp3"):
+        file_manager.add_song(song_name, song_path)
+    song_path = database.get_path(song_name)
 
     form = {'song_path': song_path, 'song_name': song_name}
 
@@ -39,6 +43,8 @@ def create_recognition_form(song_name):
     if "title" in file and "artist" in file:
         form['title'] = file["title"][0]
         form['artist'] = file["artist"][0]
+        title = form['title']
+        artist = form['artist']
     elif title and artist:
         form['title'] = title
         form['artist'] = artist
@@ -47,12 +53,18 @@ def create_recognition_form(song_name):
         form['title'] = data['title']
         form['artist'] = data['artist']
 
-    results = spotify.get_metadata(title, artist)
-    results = results['tracks']['items'][0]  # Get first result
-    spotify_album = results['album']['name']  # Parse json dictionary
-    spotify_artist = results['album']['artists'][0]['name']
-    spotify_title = results['name']
-    spotify_album_art = results['album']['images'][0]['url']
+    try:
+        results = spotify.get_metadata(title, artist)
+        results = results['tracks']['items'][0]  # Get first result
+        spotify_album = results['album']['name']  # Parse json dictionary
+        spotify_artist = results['album']['artists'][0]['name']
+        spotify_title = results['name']
+        spotify_album_art = results['album']['images'][0]['url']
+    except IndexError:
+        spotify_album = "Unknown"
+        spotify_artist = "Unknown"
+        spotify_title = "Unknown"
+        spotify_album_art = "Unknown"
 
     form['spotify_title'] = spotify_title
     form['spotify_artist'] = spotify_artist
@@ -98,6 +110,9 @@ def check_music_folder():
     for dirpath, _, filenames in walk(MUSIC_STORAGE_PATH):
         for _ in filenames:
             files += 1
+    for dirpath, _, filenames in walk(MUSIC_TEMP_STORAGE):
+        for _ in filenames:
+            files += 1
     done = 0
     changed = 0
     for dirpath, _, filenames in walk(MUSIC_STORAGE_PATH):
@@ -111,6 +126,23 @@ def check_music_folder():
                     database.update_path(old_path, path)
                     changed += 1
             done += 1
-            print('Done: ' + str(done) + ' out of ' + str(files) + '. Changed: ' + str(changed))
+            print('Done: ' + str(done) + ' out of ' + str(files) + ' in music folder. Changed: ' + str(changed))
     print('-- Ended music folder check --')
+    print('-- Started temp folder check --')
+    for dirpath, _, filenames in walk(MUSIC_TEMP_STORAGE):
+        if len(listdir(dirpath)) == 0:
+            rmtree(dirpath)
+        for file in filenames:
+            path = join(dirpath, file)
+            if database.get_by_path(path) is None:
+                old_path = database.get_path(path.split(sep)[-1])
+                if old_path is None:
+                    print('Problem with: ' + str(path))
+                else:
+                    database.update_path(old_path, path)
+                    changed += 1
+            done += 1
+            print('Done: ' + str(done) + ' out of ' + str(files) + ' in temp folder. Changed: ' + str(changed))
+    print('-- Ended temp folder check --')
+    return changed
 

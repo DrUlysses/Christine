@@ -41,4 +41,5 @@
     <string name="enter_server_address">Enter server address</string>
     <string name="set_server_ip">Set server IP</string>
     <string name="player_error">Player error</string>
+    <string name="check_music_folder">Check Music Folder</string>
 </resources>

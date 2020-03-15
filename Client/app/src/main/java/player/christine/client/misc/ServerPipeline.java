@@ -1,4 +1,4 @@
-package player.christine.client;
+package player.christine.client.misc;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -21,7 +21,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 
-class ServerPipeline {
+public class ServerPipeline {
     private static Context currentContext;
     public static final String serverAdressStart = "http://";
     public static final String statusAdress = "/status";
@@ -57,7 +57,7 @@ class ServerPipeline {
         private File uploadFile;
         private String songName;
 
-        SendFileTask(File file, String songName) throws IOException {
+        public SendFileTask(File file, String songName) throws IOException {
             this.uploadFile = file;
             this.connection.setDoOutput(true);
             this.connection.setRequestMethod("POST");
@@ -73,7 +73,9 @@ class ServerPipeline {
                     DataOutputStream output = new DataOutputStream(connection.getOutputStream())
             ) {
                 output.writeBytes("--" + boundary + CRLF);
-                output.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"" + songName + "\"" + CRLF);
+                output.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"");
+                output.write(songName.getBytes("UTF-8"));
+                output.writeBytes("\"" + CRLF);
                 output.writeBytes("Content-Length: " + uploadFile.length() + CRLF);
                 output.writeBytes("Content-Type: " + URLConnection.guessContentTypeFromName(uploadFile.getName()) + CRLF);
                 output.writeBytes("Content-Transfer-Encoding: binary" + CRLF);
@@ -104,15 +106,16 @@ class ServerPipeline {
         private HttpURLConnection connection;
         private String boundary = Long.toHexString(System.currentTimeMillis());
 
-        BecomeManageSongForm(String songName) throws IOException {
-            this.GET_URL += "?song_name=" + songName.replaceAll(" ", "%20");
+        public BecomeManageSongForm(String songName) throws IOException {
+            this.GET_URL += "?song_name=" + songName.replaceAll(" ", "%20").replaceAll("&", "%26");
             this.url = new URL(GET_URL);
             this.connection = (HttpURLConnection) url.openConnection();
             this.connection.setDoInput(true);
             this.connection.setRequestMethod("GET");
+            this.connection.setRequestProperty("Accept-Charset", "utf-8");
             this.connection.setRequestProperty("Connection", "Keep-Alive");
             this.connection.setRequestProperty("Cache-Control", "no-cache");
-            this.connection.setRequestProperty("Content-Type", "application/json; boundary=" + boundary);
+            this.connection.setRequestProperty("Content-Type", "application/json; charset=utf-8; boundary=" + boundary);
         }
 
         @Override
@@ -151,7 +154,7 @@ class ServerPipeline {
         private HttpURLConnection connection;
         private String boundary = Long.toHexString(System.currentTimeMillis());
 
-        BecomeList(String type) throws IOException {
+        public BecomeList(String type) throws IOException {
             this.GET_URL += "?type=" + type.replaceAll(" ", "%20");
             this.url = new URL(GET_URL);
             this.connection = (HttpURLConnection) url.openConnection();
@@ -198,12 +201,13 @@ class ServerPipeline {
         private HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         private String list;
 
-        SendList(String list) throws IOException {
+        public SendList(String list) throws IOException {
             this.list = list;
             this.connection.setDoOutput(true);
             this.connection.setDoInput(true);
             this.connection.setRequestMethod("POST");
             this.connection.setRequestProperty("Connection", "Keep-Alive");
+            this.connection.setRequestProperty("Accept-Charset", "utf-8");
             this.connection.setUseCaches(false);
             this.connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         }
@@ -238,7 +242,7 @@ class ServerPipeline {
         private String boundary = Long.toHexString(System.currentTimeMillis());
         File file;
 
-        GetSong(String type) throws IOException {
+        public GetSong(String type) throws IOException {
             switch (type) {
                 case "current":
                     this.GET_URL += getCurrentSongAdress;
@@ -306,13 +310,14 @@ class ServerPipeline {
         private HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         private String form;
 
-        SendManageSongForm(String form) throws IOException {
+        public SendManageSongForm(String form) throws IOException {
             this.form = form;
             this.connection.setDoOutput(true);
             this.connection.setDoInput(true);
             this.connection.setRequestMethod("POST");
             this.connection.setRequestProperty("Connection", "Keep-Alive");
             this.connection.setUseCaches(false);
+            this.connection.setRequestProperty("Accept-Charset", "utf-8");
             this.connection.setRequestProperty("Content-Type", "application/x-www-form-encoded; charset=utf-8");
         }
 
@@ -321,7 +326,7 @@ class ServerPipeline {
             try (
                     DataOutputStream output = new DataOutputStream(connection.getOutputStream())
             ) {
-                output.writeBytes(form);
+                output.write(form.getBytes("UTF8"));
                 output.flush();
                 output.close();
 
@@ -340,7 +345,7 @@ class ServerPipeline {
     public static class DownloadImage extends AsyncTask<Void, Void, Bitmap> {
         String url;
 
-        DownloadImage(String url) {
+        public DownloadImage(String url) {
             this.url = url;
         }
 

@@ -60,7 +60,7 @@ def manage_tags_get():
 def manage_tags_post():
     print('Got manage tags form')
     if request.data != b'':
-        form = loads(request.data.decode('utf8').replace("'", '"'))
+        form = loads(request.data.decode('utf8'))#.replace("'", '"'))
         if form == '' or form['song_path'] == '':
             print('Got manage tags form failed: Wrong form')
             return {'error': True}, 400
@@ -86,13 +86,13 @@ def become_list():
         return {'error': True}, 400
     elif list_type == "unmanaged":
         res = fm.create_unmanaged_songs_form()
-        result = jsonify()
+        result = jsonify(res)
         print('Sent unmanaged list:')
         print(str(res))
         return result
     elif list_type == "playlist":
         res = player.playlist_get()
-        result = jsonify()
+        result = jsonify(res)
         print('Sent playlist list:')
         print(str(res))
         return result
@@ -118,7 +118,8 @@ def send_list():
     print('Got list')
     message = {}
     if request.data != b'':
-        message = loads(request.data.decode('utf8').replace("'", '"'))
+        test = request.data.decode('utf8')
+        message = loads(test)
     if message['type'] == '' or message['content'] == '':
         print('Got list failed: Empty type or content')
         return {'error': True}, 400

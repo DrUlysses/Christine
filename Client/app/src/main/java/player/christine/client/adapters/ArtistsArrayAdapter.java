@@ -1,4 +1,4 @@
-package player.christine.client;
+package player.christine.client.adapters;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,6 +8,8 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import player.christine.client.R;
 
 public class ArtistsArrayAdapter extends BaseAdapter {
     private final List<String> idList = new ArrayList<>();

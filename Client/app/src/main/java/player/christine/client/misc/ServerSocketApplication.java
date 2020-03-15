@@ -1,4 +1,4 @@
-package player.christine.client;
+package player.christine.client.misc;
 
 import android.app.Application;
 
@@ -7,9 +7,9 @@ import java.net.URISyntaxException;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 
-import static player.christine.client.ServerPipeline.serverAdressStart;
-import static player.christine.client.ServerPipeline.getServerAdressIP;
-import static player.christine.client.ServerPipeline.statusAdress;
+import static player.christine.client.misc.ServerPipeline.serverAdressStart;
+import static player.christine.client.misc.ServerPipeline.getServerAdressIP;
+import static player.christine.client.misc.ServerPipeline.statusAdress;
 
 public class ServerSocketApplication extends Application {
 

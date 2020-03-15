@@ -1,13 +1,20 @@
 package player.christine.client;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
-import android.os.Handler;
+import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.design.widget.TabLayout;
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -22,7 +29,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,18 +39,21 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.util.List;
 import java.util.SortedMap;
-import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
+import player.christine.client.adapters.ViewPagerAdapter;
+import player.christine.client.misc.ServerPipeline;
+import player.christine.client.misc.ServerSocketApplication;
+import player.christine.client.musicplayer.MediaBrowserHelper;
+import player.christine.client.musicplayer.MediaSeekBar;
+import player.christine.client.musicplayer.MusicService;
+import player.christine.client.musicplayer.Player;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -63,13 +72,26 @@ public class MainActivity extends AppCompatActivity {
     private Button previousButton;
     private TextView timeView;
     private static TextView songNameView;
-    private static SeekBar positionBar;
+    private static MediaSeekBar positionBar;
     private static TextView minimizedSongNameView;
-    private static ProgressBar minimizedTimeBar;
+    private static MediaSeekBar minimizedTimeBar;
     private static ImageView mininizedCoverView;
     private Button mininizedPauseButton;
 
     private static Socket mSocket;
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        Player.onStart();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        Player.onStop();
+        positionBar.disconnectController();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +111,6 @@ public class MainActivity extends AppCompatActivity {
         playerLayout.setPanelState(SlidingUpPanelLayout.PanelState.HIDDEN);
         setupPanel();
 
-        setupPositionBars();
         setupNextButton();
         setupPreviousButton();
 
@@ -99,6 +120,8 @@ public class MainActivity extends AppCompatActivity {
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
         if (isRemote) updateRemoteLists();
         Player.wakePlayer();
+        Player.mMediaBrowserHelper = new MediaBrowserConnection(this);
+        Player.mMediaBrowserHelper.registerCallback(new MediaBrowserListener());
     }
 
     @Override
@@ -153,6 +176,10 @@ public class MainActivity extends AppCompatActivity {
                 builder.show();
 
                 return true;
+            case R.id.check_music_folder:
+                if (mSocket.connected())
+                    mSocket.emit("check_music_folder");
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -167,6 +194,7 @@ public class MainActivity extends AppCompatActivity {
         mSocket.on(Socket.EVENT_CONNECT_TIMEOUT, onConnectError);
         mSocket.on("status", onStatus);
         mSocket.on("is_playing", onIsPlaying);
+        mSocket.on("new_ones", onNewSongsAdded);
     }
 
     private void initializeVariables() {
@@ -199,10 +227,7 @@ public class MainActivity extends AppCompatActivity {
         preferencesEditor.putBoolean("isRemoteLibrary", true);
         preferencesEditor.apply();
         invalidateOptionsMenu();
-        if (!updateRemoteLists()) {
-            mSocket.disconnect();
-            return;
-        }
+        updateRemoteLists();
         Toast.makeText(getApplicationContext(), R.string.connected, Toast.LENGTH_LONG).show();
         viewPager.setAdapter(new ViewPagerAdapter(this));
         tabLayout.setupWithViewPager(viewPager);
@@ -215,7 +240,7 @@ public class MainActivity extends AppCompatActivity {
         preferencesEditor.apply();
         invalidateOptionsMenu();
         Toast.makeText(getApplicationContext(), R.string.disconnected, Toast.LENGTH_LONG).show();
-        Player.setSongList(Player.fillSongList());
+        Player.setSongList(Player.fillSongList(this));
         Player.setArtistsSongsList(Player.fillArtistsSongsList());
         viewPager.setAdapter(new ViewPagerAdapter(this));
         tabLayout.setupWithViewPager(viewPager);
@@ -231,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
         preferencesEditor.apply();
         invalidateOptionsMenu();
         Toast.makeText(getApplicationContext(), R.string.error_connecting, Toast.LENGTH_LONG).show();
-        Player.setSongList(Player.fillSongList());
+        Player.setSongList(Player.fillSongList(this));
         Player.setArtistsSongsList(Player.fillArtistsSongsList());
         viewPager.setAdapter(new ViewPagerAdapter(this));
         tabLayout.setupWithViewPager(viewPager);
@@ -243,7 +268,6 @@ public class MainActivity extends AppCompatActivity {
         Integer time;
         try {
             time = data.getInt("current_time");
-            Player.setPosition(time);
             status = data.getString("status");
             if (status.equals("true")) {
                 status = "playing";
@@ -267,7 +291,6 @@ public class MainActivity extends AppCompatActivity {
         Integer time;
         try {
             time = data.getInt("current_time");
-            Player.setPosition(time);
             status = data.getString("status");
             if (status.equals("true")) {
                 status = "playing";
@@ -282,6 +305,17 @@ public class MainActivity extends AppCompatActivity {
         } catch (JSONException e) {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
             mSocket.disconnect();
+        }
+    });
+
+    private Emitter.Listener onNewSongsAdded = args -> runOnUiThread(() -> {
+        JSONObject data = (JSONObject) args[0];
+        Integer newOnes;
+        try {
+            newOnes = data.getInt("new_ones");
+            Toast.makeText(getApplicationContext(), "Added new songs ("  + newOnes + ")", Toast.LENGTH_SHORT).show();
+        } catch (JSONException e) {
+            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     });
 
@@ -344,7 +378,7 @@ public class MainActivity extends AppCompatActivity {
 
     private View.OnClickListener setupPause() {
         return v -> {
-            if (Player.player.isPlaying()) {
+            if (Player.isPlaying()) {
                 Player.pause();
                 pauseButton.setText(R.string.play);
                 mininizedPauseButton.setText(R.string.play);
@@ -356,48 +390,11 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
-    private void setupPositionBars() {
-        Handler mHandler = new Handler();
-        this.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                DateFormat formatter = new SimpleDateFormat("HH:mm:ss", Locale.US);
-                formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-                if(Player.player != null){
-                    int milliseconds = Player.player.getCurrentPosition();
-                    int mCurrentPosition = milliseconds / 1000;
-                    positionBar.setProgress(mCurrentPosition);
-                    minimizedTimeBar.setProgress(mCurrentPosition);
-                    timeView.setText(formatter.format(new Date(milliseconds)));
-                }
-                mHandler.postDelayed(this, 1000);
-            }
-        });
-
-        positionBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (Player.player != null && fromUser) {
-                    Player.player.seekTo(progress * 1000);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-    }
-
     public static void changePlayingSong(String title, String artist, String path) {
         String tempName = title + " - " + artist;
 
         songNameView.setText(tempName);
         minimizedSongNameView.setText(tempName);
-
-        positionBar.setMax(Player.player.getDuration() / 1000);
-        minimizedTimeBar.setMax(Player.player.getDuration() / 1000);
 
         android.media.MediaMetadataRetriever mmr = new MediaMetadataRetriever();
         mmr.setDataSource(path);
@@ -431,5 +428,86 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    /**
+     * Customize the connection to our {@link android.support.v4.media.MediaBrowserServiceCompat}
+     * and implement our app specific desires.
+     */
+    private class MediaBrowserConnection extends MediaBrowserHelper {
+        private MediaBrowserConnection(Context context) {
+            super(context, MusicService.class);
+        }
+
+        @Override
+        protected void onConnected(@NonNull MediaControllerCompat mediaController) {
+            positionBar.setMediaController(mediaController);
+            minimizedTimeBar.setMediaController(mediaController);
+        }
+
+        @Override
+        protected void onChildrenLoaded(@NonNull String parentId,
+                                        @NonNull List<MediaBrowserCompat.MediaItem> children) {
+            super.onChildrenLoaded(parentId, children);
+
+            final MediaControllerCompat mediaController = getMediaController();
+
+            // Queue up all media items for this simple sample.
+            for (final MediaBrowserCompat.MediaItem mediaItem : children) {
+                mediaController.addQueueItem(mediaItem.getDescription());
+            }
+
+            // Call prepare now so pressing play just works.
+            mediaController.getTransportControls().prepare();
+        }
+    }
+
+    /**
+     * Implementation of the {@link MediaControllerCompat.Callback} methods we're interested in.
+     * <p>
+     * Here would also be where one could override
+     * {@code onQueueChanged(List<MediaSessionCompat.QueueItem> queue)} to get informed when items
+     * are added or removed from the queue. We don't do this here in order to keep the UI
+     * simple.
+     */
+    private class MediaBrowserListener extends MediaControllerCompat.Callback {
+        @Override
+        public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
+            if (playbackState != null && playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {
+                Player.pause();
+                pauseButton.setText(R.string.play);
+                mininizedPauseButton.setText(R.string.play);
+            } else {
+                Player.resume();
+                pauseButton.setText(R.string.pause);
+                mininizedPauseButton.setText(R.string.pause);
+            }
+        }
+
+        @Override
+        public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
+            if (mediaMetadata == null) {
+                return;
+            }
+            String tempName = mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE) +
+                    " - " + mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST);
+            songNameView.setText(tempName);
+            minimizedSongNameView.setText(tempName);
+            Bitmap bitmap = Player.extractAlbumArt(
+                    mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI),
+                    MainActivity.this);
+            coverView.setImageBitmap(bitmap);
+            mininizedCoverView.setImageBitmap(bitmap);
+        }
+
+        @Override
+        public void onSessionDestroyed() {
+            super.onSessionDestroyed();
+        }
+
+        @Override
+        public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
+            super.onQueueChanged(queue);
+        }
     }
 }

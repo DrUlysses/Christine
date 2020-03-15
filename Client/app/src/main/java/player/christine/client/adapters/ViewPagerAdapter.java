@@ -1,4 +1,4 @@
-package player.christine.client;
+package player.christine.client.adapters;
 
 import android.content.Context;
 import android.support.design.widget.TabLayout;
@@ -13,6 +13,9 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import player.christine.client.musicplayer.Player;
+import player.christine.client.R;
 
 public class ViewPagerAdapter extends PagerAdapter {
 

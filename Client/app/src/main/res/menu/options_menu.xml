@@ -15,4 +15,7 @@
     <item
         android:id="@+id/set_server_ip_option"
         android:title="@string/set_server_ip" />
+    <item
+        android:id="@+id/check_music_folder"
+        android:title="@string/check_music_folder" />
 </menu>

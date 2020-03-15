@@ -67,7 +67,9 @@
         android:layout_marginBottom="32dp"
         android:text="@string/next"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        android:windowSoftInputMode="adjustPan|adjustResize"
+        app:layout_constraintTop_toBottomOf="@+id/unsorted_song_cover_url_edit" />
 
     <Button
         android:id="@+id/previous_unsorted_button"
@@ -78,7 +80,9 @@
         android:layout_marginBottom="32dp"
         android:text="@string/previous"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        android:windowSoftInputMode="adjustPan|adjustResize"
+        app:layout_constraintTop_toBottomOf="@+id/unsorted_song_cover_url_edit" />
 
     <EditText
         android:id="@+id/unsorted_song_cover_url_edit"

@@ -49,10 +49,18 @@ Base.metadata.create_all(engine)
 def add_song(title, artist, path="", album="", duration=0, tags="", text=0, status=u'added'):
     song = Song(title=title, album=album, artist=artist, duration=duration, tags=tags, text=text,
                 path=path, status=status)
-    exists = session.query(Song).filter_by(title=title, artist=artist).scalar()
-    # TODO: handle merge: problem - creates duplicate instead of merge
-    if exists is None:
+    old = session.query(Song).filter_by(title=title, artist=artist).first()
+    if old is None:
         session.add(song)
+    else:
+        old.title = title
+        old.album = album
+        old.artist = artist
+        old.duration = duration
+        old.tags = tags
+        old.text = text
+        old.path = path
+        old.status = status
     session.commit()
     return True
 
@@ -75,20 +83,25 @@ def add_spotify_songs():
     return True
 
 
-def has_song(song_name):
+def has_song_by_name(song_name):
     song_name = checker.divide_name(song_name)
-    res = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).scalar() is not None
+    res = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first() is not None
+    return res
+
+
+def has_song_by_path(song_path):
+    res = session.query(Song).filter_by(path=song_path).first() is not None
     return res
 
 
 def is_added(path):
-    res = session.query(Song).filter_by(path=path).scalar() is not None
+    res = session.query(Song).filter_by(path=path).first() is not None
     return res
 
 
 def get_path(song_name):
     res = None
-    if has_song(song_name):
+    if has_song_by_name(song_name):
         song_name = checker.divide_name(song_name)
         try:
             res = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().path
@@ -97,7 +110,7 @@ def get_path(song_name):
     return res
 
 
-def get_status(song_name):
+def get_status_by_name(song_name):
     song_name = checker.divide_name(song_name)
     try:
         status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
@@ -105,6 +118,19 @@ def get_status(song_name):
         rescan_temp_folder()
         try:
             status = session.query(Song).filter_by(title=song_name[0], artist=song_name[1]).first().status
+        except AttributeError:
+            return 'error'
+    return status
+
+
+def get_status_by_path(song_path):
+    try:
+        res = session.query(Song).filter_by(path=song_path).first()
+        status = res.status
+    except AttributeError:
+        rescan_temp_folder()
+        try:
+            status = session.query(Song).filter_by(path=song_path).first().status
         except AttributeError:
             return 'error'
     return status

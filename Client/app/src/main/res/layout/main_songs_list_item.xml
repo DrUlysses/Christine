@@ -4,21 +4,20 @@
     android:layout_height="?android:attr/listPreferredItemHeight"
     android:padding="8dip">
 
-
     <TextView
         android:id="@+id/main_songs_list_item_title"
-        android:layout_width="fill_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignWithParentIfMissing="true"
         android:layout_above="@+id/main_songs_list_item_artist"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:layout_marginStart="8dp"
         android:layout_marginLeft="8dp"
-        android:layout_marginBottom="0dp"
+        android:layout_marginBottom="2dp"
+        android:layout_toEndOf="@+id/main_songs_list_item_path"
+        android:layout_toRightOf="@+id/main_songs_list_item_path"
         android:gravity="center_vertical"
         android:text="@string/title" />
 
@@ -31,8 +30,11 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:layout_alignParentBottom="true"
-        android:layout_marginStart="16dp"
-        android:layout_marginLeft="16dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginEnd="2dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginBottom="2dp"
         android:text="@string/artist"
         android:textSize="12sp" />
 

@@ -1,15 +1,21 @@
-package player.christine.client;
+package player.christine.client.adapters;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.MediaMetadataRetriever;
 import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+
+import player.christine.client.R;
 
 public class SongsArrayAdapter extends BaseAdapter {
     private final ArrayList mData;
@@ -45,11 +51,11 @@ public class SongsArrayAdapter extends BaseAdapter {
     public View getView(int position, View convertView, ViewGroup parent) {
         final View result;
 
-        if (convertView == null) {
+        if (convertView == null)
             result = LayoutInflater.from(parent.getContext()).inflate(R.layout.main_songs_list_item, parent, false);
-        } else {
+        else
             result = convertView;
-        }
+
 
         Map.Entry<String, Pair<String, String>> item = getItem(position);
         ((TextView) result.findViewById(R.id.main_songs_list_item_path)).setText(item.getKey());

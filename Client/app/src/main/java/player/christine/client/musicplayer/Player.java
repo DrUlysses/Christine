@@ -1,23 +1,30 @@
-package player.christine.client;
+package player.christine.client.musicplayer;
 
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
-import android.media.MediaPlayer;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
-import android.os.PowerManager;
 import android.provider.MediaStore;
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaMetadataCompat;
 import android.util.Pair;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -27,16 +34,20 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
-final class Player {
-    static MediaPlayer player;
-    private static int position;
+import player.christine.client.MainActivity;
+import player.christine.client.misc.ServerPipeline;
+
+public final class Player {
     private static int currentTrackNum;
     private static int currentTracksAmount;
-    static String currentChosenArtist;
+    public static String currentChosenArtist;
     private static LinkedHashMap<Integer, String> currentTrackSequence;
-    static SortedMap<String, Pair<String, String>> currentSongs;
-    static SortedMap<String, SortedMap<String, String>> currentArtistsSongs;
+    public static SortedMap<String, Pair<String, String>> currentSongs; // [path <title, artist>]
+    public static SortedMap<String, SortedMap<String, String>> currentArtistsSongs;
+    private static final TreeMap<String, MediaMetadataCompat> music = new TreeMap<>();
+    private static final HashMap<String, String> albumRes = new HashMap<>(); // [id (path), album]
     private static SharedPreferences preferences;
     private static SharedPreferences.Editor preferencesEditor;
     private static Context currentContext;
@@ -44,14 +55,24 @@ final class Player {
     private static Uri nextRemoteSongPath;
     private static Uri previousRemoteSongPath;
     private static boolean isRemotePlaying;
+    private static boolean isPlaying;
+    public static MediaBrowserHelper mMediaBrowserHelper;
+
+    public static void onStart() {
+        mMediaBrowserHelper.onStart();
+    }
+
+    public static void onStop() {
+        mMediaBrowserHelper.onStop();
+    }
 
     private Player() {
         preferences  = currentContext.getSharedPreferences("Preferences", Context.MODE_PRIVATE);
         currentSongs = new TreeMap<>();
         currentArtistsSongs = new TreeMap<>();
-        setSongList(fillSongList());
+        setSongList(fillSongList(currentContext));
         setArtistsSongsList(fillArtistsSongsList());
-        position = 0;
+        isPlaying = false;
         currentTrackNum = preferences.getInt("currentTrackNum", 0);
         currentTracksAmount = preferences.getInt("currentTracksAmount", 1);
         currentTrackSequence = new LinkedHashMap<>();
@@ -63,7 +84,6 @@ final class Player {
                 currentTrackSequence.put(i, iter.next());
         } else
             currentTrackSequence.put(0, "");
-        player = new MediaPlayer();
     }
 
     public static void wakePlayer() {
@@ -82,7 +102,7 @@ final class Player {
         preferencesEditor.apply();
     }
 
-    static void setCurrentContext(Context context) {
+    public static void setCurrentContext(Context context) {
         currentContext = context;
         new Player();
     }
@@ -133,21 +153,11 @@ final class Player {
         currentContext = context;
         String title = currentSongs.get(currentTrackSequence.get(currentTrackNum)).first;
         String artist = currentSongs.get(currentTrackSequence.get(currentTrackNum)).second;
-        if (player != null) player.release();
-        position = 0;
-        player = MediaPlayer.create(currentContext, songPath);
-        if (player != null) {
-            player.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK);
-            setupPlayer();
-            MainActivity.changePlayingSong(title, artist, songPath.toString());
-            player.start();
-           if (preferences.getBoolean("isRemoteLibrary", false))
-               player.setVolume(0, 0);
-        } else {
-            Toast.makeText(context, R.string.player_error, Toast.LENGTH_LONG).show();
-        }
+        MainActivity.changePlayingSong(title, artist, songPath.toString());
+        if (preferences.getBoolean("isRemoteLibrary", false))
+            mMediaBrowserHelper.getMediaController().setVolumeTo(0, (int) mMediaBrowserHelper.getMediaController().getFlags());
     }
-
+/*
     private static void setupPlayer() {
         player.setOnCompletionListener(mp -> {
             if (currentTrackNum++ < currentTrackSequence.size()) {
@@ -160,8 +170,8 @@ final class Player {
                 player.stop();
         });
     }
-
-    static void playSongFromList(int position) {
+*/
+    public static void playSongFromList(int position) {
         // get file name and send it to new view
         currentTrackNum = position;
         currentTracksAmount = currentSongs.size();
@@ -175,7 +185,7 @@ final class Player {
         playCurrentSong();
     }
 
-    static void playSongFromArtistList(int position) {
+    public static void playSongFromArtistList(int position) {
         // get file name and send it to new view
         currentTrackNum = position;
         // Oneline command is here too long, good old one is shorter
@@ -201,7 +211,6 @@ final class Player {
                 new ServerPipeline.SendList(temp.toString()).execute().get();
             } catch (JSONException | InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
-                player = null;
                 return;
             }
         }
@@ -220,7 +229,7 @@ final class Player {
         }
     }
 
-    static void shuffleCurrentArtistSongs() {
+    public static void shuffleCurrentArtistSongs() {
         currentTrackNum = 0;
         String artist = currentChosenArtist;
         List<String> songsPaths = new ArrayList<>(currentArtistsSongs.get(artist).values());
@@ -234,7 +243,7 @@ final class Player {
         playCurrentSong();
     }
 
-    static void shuffleSongs() {
+    public static void shuffleSongs() {
         currentTrackNum = 0;
         List<String> songsPaths = new ArrayList<>(currentSongs.keySet());
         Collections.shuffle(songsPaths);
@@ -247,41 +256,70 @@ final class Player {
         playCurrentSong();
     }
 
-    static void setSongList(SortedMap<String, Pair<String, String>> songs) {
+    public static void setSongList(SortedMap<String, Pair<String, String>> songs) {
         currentTracksAmount = songs.size();
         currentSongs = songs;
     }
 
-    static void setArtistsSongsList(SortedMap<String, SortedMap<String, String>> artistsSongs) {
+    public static void setArtistsSongsList(SortedMap<String, SortedMap<String, String>> artistsSongs) {
         currentArtistsSongs = artistsSongs;
     }
 
-    static SortedMap<String, Pair<String, String>> fillSongList() {
+    public static SortedMap<String, Pair<String, String>> fillSongList(Context context) {
         ContentResolver contentResolver = currentContext.getContentResolver();
         Uri songUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         Cursor cursor = contentResolver.query(songUri, null, null, null, null);
-        // [path <title, artist>]
         SortedMap<String, Pair<String, String>> result = new TreeMap<>();
 
         if (cursor != null && cursor.moveToFirst()) {
             int songTitle = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
+            int songAlbum = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
             int songArtist = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
             int songLocation = cursor.getColumnIndex(MediaStore.Audio.Media.DATA);
-            Pair<String, String> tempPair;
+            int songDuration = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
+            String tempPath;
             String tempTitle;
+            String tempAlbum;
             String tempArtist;
+            String tempDuration;
+            String tempAlbumArt;
+            Pair<String, String> tempPair;
             do {
                 tempTitle = cursor.getString(songTitle);
+                tempAlbum = cursor.getString(songAlbum);
                 tempArtist = cursor.getString(songArtist);
+                tempPath = cursor.getString(songLocation);
+                albumRes.put(tempPath, tempAlbum);
+                tempDuration = cursor.getString(songDuration);
+                extractAlbumArt(tempPath, context);
+                tempAlbumArt = Uri.fromFile(new File(context.getCacheDir(), tempAlbum)).toString();
                 tempPair = new Pair<>(tempTitle, tempArtist);
                 result.put(cursor.getString(songLocation), tempPair);
+                music.put(
+                        tempPath,
+                        new MediaMetadataCompat.Builder()
+                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, tempPath)
+                                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, tempAlbum)
+                                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, tempArtist)
+                                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
+                                        TimeUnit.MILLISECONDS.convert(Integer.parseInt(tempDuration), TimeUnit.SECONDS))
+                                .putString(
+                                        MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,
+                                        tempAlbumArt
+                                )
+                                .putString(
+                                        MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,
+                                        tempAlbumArt
+                                )
+                                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, tempTitle)
+                                .build());
             } while (cursor.moveToNext());
             cursor.close();
         }
         return result;
     }
 
-    static SortedMap<String, SortedMap<String, String>> fillArtistsSongsList() {
+    public static SortedMap<String, SortedMap<String, String>> fillArtistsSongsList() {
         ContentResolver contentResolver = currentContext.getContentResolver();
         Uri songUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         Cursor cursor = contentResolver.query(songUri, null, null, null, null);
@@ -326,7 +364,7 @@ final class Player {
         if (!isRemotePlaying) MainActivity.socketSend("play_pause");
     }
 
-    static void playPrevious() {
+    public static void playPrevious() {
         if (currentTrackNum-- > 0) {
             if (preferences.getBoolean("isRemoteLibrary", false)) {
                 previousRemoteSong();
@@ -340,7 +378,7 @@ final class Player {
         updateSavedPlaylist();
     }
 
-    static void playNext() {
+    public static void playNext() {
         if (currentTrackNum++ < currentTrackSequence.size()) {
             if (preferences.getBoolean("isRemoteLibrary", false)) {
                 nextRemoteSong();
@@ -354,43 +392,106 @@ final class Player {
         updateSavedPlaylist();
     }
 
-    static void pause() {
+    public static void pause() {
         try {
-            if (player.isPlaying()) {
-                boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-                if (isRemote) pauseRemote();
-                player.pause();
-                position = player.getCurrentPosition();
-            }
+            if (preferences.getBoolean("isRemoteLibrary", false)) pauseRemote();
+            mMediaBrowserHelper.getMediaController().getTransportControls().pause();
         } catch (IllegalStateException | NullPointerException e) {
-            player = null;
             return;
         }
 
     }
 
-    static void resume() {
+    public static void resume() {
         try {
-            if (!player.isPlaying()) {
-                player.seekTo(position);
-                player.start();
+            if (!isPlaying) {
+                mMediaBrowserHelper.getTransportControls().play();
                 boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
                 if (isRemote) {
-                    player.setVolume(0, 0);
+                    mMediaBrowserHelper.getMediaController().setVolumeTo(0, (int) mMediaBrowserHelper.getMediaController().getFlags());
                     resumeRemote();
                 }
             }
         } catch (IllegalStateException | NullPointerException e) {
-            player = null;
             return;
         }
     }
 
-    static void setPosition(Integer pos) {
-        position = pos;
+    public static void setIsRemotePlaying(boolean val) {
+        isRemotePlaying = val;
     }
 
-    static void setIsRemotePlaying(boolean val) {
-        isRemotePlaying = val;
+    public static boolean isPlaying() {
+        return isPlaying;
+    }
+
+    public static Bitmap extractAlbumArt(String path, Context context) {
+        android.media.MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        byte [] data;
+        Bitmap bitmap = null;
+        File cacheDir = context.getCacheDir();
+        File f = new File(cacheDir, albumRes.get(path));
+        FileInputStream fis;
+        try {
+            fis = new FileInputStream(f);
+            return BitmapFactory.decodeStream(fis);
+        } catch (FileNotFoundException e) {
+            try {
+                try {
+                    mmr.setDataSource(path);
+                    data = mmr.getEmbeddedPicture();
+                } catch (IllegalArgumentException er) {
+                    return null;
+                }
+                if (data != null) {
+                    bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                    FileOutputStream out = new FileOutputStream(f);
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
+                    out.flush();
+                    out.close();
+                }
+            } catch(IOException | NullPointerException error) {
+                return null;
+            }
+        }
+        return bitmap;
+    }
+
+    public static String getRoot() {
+        return "root";
+    }
+
+    public static List<MediaBrowserCompat.MediaItem> getMediaItems() {
+        List<MediaBrowserCompat.MediaItem> result = new ArrayList<>();
+        for (MediaMetadataCompat metadata : music.values()) {
+            result.add(
+                    new MediaBrowserCompat.MediaItem(
+                            metadata.getDescription(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+        }
+        return result;
+    }
+
+    public static MediaMetadataCompat getMetadata(Context context, String mediaId) {
+        MediaMetadataCompat metadataWithoutBitmap = music.get(mediaId);
+        Bitmap albumArt = extractAlbumArt(mediaId, context);
+
+        // Since MediaMetadataCompat is immutable, we need to create a copy to set the album art.
+        // We don't set it initially on all items so that they don't take unnecessary memory.
+        MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
+        for (String key :
+                new String[]{
+                        MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
+                        MediaMetadataCompat.METADATA_KEY_ALBUM,
+                        MediaMetadataCompat.METADATA_KEY_ARTIST,
+                        MediaMetadataCompat.METADATA_KEY_GENRE,
+                        MediaMetadataCompat.METADATA_KEY_TITLE
+                }) {
+            builder.putString(key, metadataWithoutBitmap.getString(key));
+        }
+        builder.putLong(
+                MediaMetadataCompat.METADATA_KEY_DURATION,
+                metadataWithoutBitmap.getLong(MediaMetadataCompat.METADATA_KEY_DURATION));
+        builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, albumArt);
+        return builder.build();
     }
 }

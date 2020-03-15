@@ -22,7 +22,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+
+import player.christine.client.misc.ServerPipeline;
 
 public class ManageUnsortedActivity extends AppCompatActivity {
 
@@ -63,7 +66,7 @@ public class ManageUnsortedActivity extends AppCompatActivity {
         // fill the list with the filenames TODO - add status if started managing file so user can recognize where he stopped
         try {
             JSONStorage = new JSONObject(new ServerPipeline.BecomeList("unmanaged").execute().get());
-        } catch (JSONException | InterruptedException | ExecutionException | IOException e) {
+        } catch (JSONException | InterruptedException | ExecutionException | IOException | CancellationException e) {
             e.printStackTrace();
         }
         HashMap<String, String> items = new HashMap<>();
