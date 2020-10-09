@@ -6,7 +6,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.support.v7.widget.AppCompatSeekBar;
+import androidx.appcompat.widget.AppCompatSeekBar;
 import android.util.AttributeSet;
 import android.view.animation.LinearInterpolator;
 import android.widget.SeekBar;
@@ -37,6 +37,7 @@ public class MediaSeekBar extends AppCompatSeekBar {
             mIsTracking = false;
         }
     };
+
     private ValueAnimator mProgressAnimator;
 
     public MediaSeekBar(Context context) {
@@ -107,8 +108,9 @@ public class MediaSeekBar extends AppCompatSeekBar {
             // way to do that is to create a ValueAnimator to update it so the bar reaches
             // the end of the media the same time as playback gets there (or close enough).
             if (state != null && state.getState() == PlaybackStateCompat.STATE_PLAYING) {
-                final int timeToEnd = (int) ((getMax() - progress) / state.getPlaybackSpeed());
-
+                int timeToEnd = (int) ((getMax() - progress) / state.getPlaybackSpeed());
+                if (timeToEnd < 0)
+                    timeToEnd = 0;
                 mProgressAnimator = ValueAnimator.ofInt(progress, getMax())
                         .setDuration(timeToEnd);
                 mProgressAnimator.setInterpolator(new LinearInterpolator());

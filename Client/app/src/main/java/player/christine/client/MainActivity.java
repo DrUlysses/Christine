@@ -7,17 +7,20 @@ import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
-import android.net.Uri;
-import android.support.annotation.NonNull;
-import android.support.design.widget.TabLayout;
+
+import androidx.annotation.NonNull;
+import com.google.android.material.tabs.TabLayout;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.support.v4.view.ViewPager;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
+
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.media.MediaBrowserServiceCompat;
+import androidx.viewpager.widget.ViewPager;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Pair;
@@ -27,7 +30,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -57,14 +59,14 @@ import player.christine.client.musicplayer.Player;
 
 public class MainActivity extends AppCompatActivity {
 
-    private android.support.v7.widget.Toolbar toolbar;
+    private androidx.appcompat.widget.Toolbar toolbar;
     private ViewPager viewPager;
     private TabLayout tabLayout;
     private SharedPreferences preferences;
     private SharedPreferences.Editor preferencesEditor;
 
     private static SlidingUpPanelLayout playerLayout;
-    private android.support.constraint.ConstraintLayout expandedLayout;
+    private ConstraintLayout expandedLayout;
     private RelativeLayout minimizedLayout;
     private static ImageView coverView;
     private Button nextButton;
@@ -83,13 +85,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onStart() {
         super.onStart();
-        Player.onStart();
+        Player.mMediaBrowserHelper.onStart();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        Player.onStop();
+        Player.mMediaBrowserHelper.onStop();
         positionBar.disconnectController();
     }
 
@@ -119,9 +121,9 @@ public class MainActivity extends AppCompatActivity {
 
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
         if (isRemote) updateRemoteLists();
-        Player.wakePlayer();
         Player.mMediaBrowserHelper = new MediaBrowserConnection(this);
         Player.mMediaBrowserHelper.registerCallback(new MediaBrowserListener());
+        Player.wakePlayer();
     }
 
     @Override
@@ -151,9 +153,8 @@ public class MainActivity extends AppCompatActivity {
                 if (isChecked) {
                     initializeSocket();
                     mSocket.connect();
-                } else {
+                } else
                     mSocket.disconnect();
-                }
                 return true;
             case R.id.set_server_ip_option:
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -272,11 +273,11 @@ public class MainActivity extends AppCompatActivity {
             if (status.equals("true")) {
                 status = "playing";
                 Player.setIsRemotePlaying(true);
-                Player.resume();
+                Player.mMediaBrowserHelper.getTransportControls().play();
             } else if (status.equals("false")) {
                 status = "paused";
                 Player.setIsRemotePlaying(false);
-                Player.pause();
+                Player.mMediaBrowserHelper.getTransportControls().pause();
             }
             Toast.makeText(getApplicationContext(), status, Toast.LENGTH_SHORT).show();
         } catch (JSONException e) {
@@ -295,11 +296,11 @@ public class MainActivity extends AppCompatActivity {
             if (status.equals("true")) {
                 status = "playing";
                 Player.setIsRemotePlaying(true);
-                Player.resume();
+                Player.mMediaBrowserHelper.getTransportControls().play();
             } else if (status.equals("false")) {
                 status = "paused";
                 Player.setIsRemotePlaying(false);
-                Player.pause();
+                Player.mMediaBrowserHelper.getTransportControls().pause();
             }
             Toast.makeText(getApplicationContext(), status, Toast.LENGTH_SHORT).show();
         } catch (JSONException e) {
@@ -369,21 +370,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupPreviousButton() {
-        previousButton.setOnClickListener(v -> Player.playPrevious());
+        previousButton.setOnClickListener(v -> Player.mMediaBrowserHelper.getTransportControls().skipToPrevious());
     }
 
     private void setupNextButton() {
-        nextButton.setOnClickListener(v -> Player.playNext());
+        nextButton.setOnClickListener(v -> Player.mMediaBrowserHelper.getTransportControls().skipToNext());
     }
 
     private View.OnClickListener setupPause() {
         return v -> {
             if (Player.isPlaying()) {
-                Player.pause();
+                Player.mMediaBrowserHelper.getTransportControls().pause();
                 pauseButton.setText(R.string.play);
                 mininizedPauseButton.setText(R.string.play);
             } else {
-                Player.resume();
+                Player.mMediaBrowserHelper.getTransportControls().play();
                 pauseButton.setText(R.string.pause);
                 mininizedPauseButton.setText(R.string.pause);
             }
@@ -431,7 +432,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Customize the connection to our {@link android.support.v4.media.MediaBrowserServiceCompat}
+     * Customize the connection to our {@link MediaBrowserServiceCompat}
      * and implement our app specific desires.
      */
     private class MediaBrowserConnection extends MediaBrowserHelper {
@@ -473,14 +474,16 @@ public class MainActivity extends AppCompatActivity {
     private class MediaBrowserListener extends MediaControllerCompat.Callback {
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
-            if (playbackState != null && playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {
-                Player.pause();
-                pauseButton.setText(R.string.play);
-                mininizedPauseButton.setText(R.string.play);
-            } else {
-                Player.resume();
+            if (playbackState == null)
+                return;
+            else if (playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {
+                Player.mMediaBrowserHelper.getTransportControls().play();
                 pauseButton.setText(R.string.pause);
                 mininizedPauseButton.setText(R.string.pause);
+            } else if (playbackState.getState() == PlaybackStateCompat.STATE_PAUSED) {
+                Player.mMediaBrowserHelper.getTransportControls().pause();
+                pauseButton.setText(R.string.play);
+                mininizedPauseButton.setText(R.string.play);
             }
         }
 

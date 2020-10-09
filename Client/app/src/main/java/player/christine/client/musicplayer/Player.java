@@ -10,18 +10,23 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Pair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,13 +42,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import player.christine.client.MainActivity;
+import player.christine.client.R;
 import player.christine.client.misc.ServerPipeline;
 
 public final class Player {
     private static int currentTrackNum;
     private static int currentTracksAmount;
     public static String currentChosenArtist;
-    private static LinkedHashMap<Integer, String> currentTrackSequence;
+    public static LinkedHashMap<Integer, String> currentTrackSequence;
     public static SortedMap<String, Pair<String, String>> currentSongs; // [path <title, artist>]
     public static SortedMap<String, SortedMap<String, String>> currentArtistsSongs;
     private static final TreeMap<String, MediaMetadataCompat> music = new TreeMap<>();
@@ -58,14 +64,6 @@ public final class Player {
     private static boolean isPlaying;
     public static MediaBrowserHelper mMediaBrowserHelper;
 
-    public static void onStart() {
-        mMediaBrowserHelper.onStart();
-    }
-
-    public static void onStop() {
-        mMediaBrowserHelper.onStop();
-    }
-
     private Player() {
         preferences  = currentContext.getSharedPreferences("Preferences", Context.MODE_PRIVATE);
         currentSongs = new TreeMap<>();
@@ -79,9 +77,9 @@ public final class Player {
         Set<String> tempTrackSequence = preferences.getStringSet("currentTrackSequence", null);
         // TODO: can be beautified
         if (tempTrackSequence != null) {
-            Iterator<String> iter = tempTrackSequence.iterator();
+            Iterator<String> it = tempTrackSequence.iterator();
             for (int i = 0; i < tempTrackSequence.size(); i++)
-                currentTrackSequence.put(i, iter.next());
+                currentTrackSequence.put(i, it.next());
         } else
             currentTrackSequence.put(0, "");
     }
@@ -116,7 +114,6 @@ public final class Player {
                 previousRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("previous").execute().get());
             } catch (InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
-                return;
             }
         }
     }
@@ -130,7 +127,6 @@ public final class Player {
                 nextRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("next").execute().get());
             } catch (InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
-                return;
             }
         }
     }
@@ -144,7 +140,6 @@ public final class Player {
                 previousRemoteSongPath = Uri.parse(new ServerPipeline.GetSong("previous").execute().get());
             } catch (InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
-                return;
             }
         }
     }
@@ -154,23 +149,11 @@ public final class Player {
         String title = currentSongs.get(currentTrackSequence.get(currentTrackNum)).first;
         String artist = currentSongs.get(currentTrackSequence.get(currentTrackNum)).second;
         MainActivity.changePlayingSong(title, artist, songPath.toString());
+        isPlaying = true;
         if (preferences.getBoolean("isRemoteLibrary", false))
             mMediaBrowserHelper.getMediaController().setVolumeTo(0, (int) mMediaBrowserHelper.getMediaController().getFlags());
     }
-/*
-    private static void setupPlayer() {
-        player.setOnCompletionListener(mp -> {
-            if (currentTrackNum++ < currentTrackSequence.size()) {
-                if (preferences.getBoolean("isRemoteLibrary", false)) {
-                    updateNextRemoteSong();
-                    play(currentRemoteSongPath, currentContext);
-                } else
-                    play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
-            } else
-                player.stop();
-        });
-    }
-*/
+
     public static void playSongFromList(int position) {
         // get file name and send it to new view
         currentTrackNum = position;
@@ -211,12 +194,11 @@ public final class Player {
                 new ServerPipeline.SendList(temp.toString()).execute().get();
             } catch (JSONException | InterruptedException | ExecutionException | IOException | CancellationException e) {
                 e.printStackTrace();
-                return;
             }
         }
     }
 
-    private static void playCurrentSong() {
+    public static void playCurrentSong() {
         try {
             if (preferences.getBoolean("isRemoteLibrary", false)) {
                 updateCurrentRemoteSong();
@@ -225,7 +207,7 @@ public final class Player {
             } else
                 play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
         } catch (Exception e) {
-            return;
+            e.printStackTrace();
         }
     }
 
@@ -241,6 +223,7 @@ public final class Player {
         updateSavedPlaylist();
         updateRemotePlaylist();
         playCurrentSong();
+        mMediaBrowserHelper.getTransportControls().play();
     }
 
     public static void shuffleSongs() {
@@ -254,6 +237,7 @@ public final class Player {
         updateSavedPlaylist();
         updateRemotePlaylist();
         playCurrentSong();
+        mMediaBrowserHelper.getTransportControls().play();
     }
 
     public static void setSongList(SortedMap<String, Pair<String, String>> songs) {
@@ -282,7 +266,6 @@ public final class Player {
             String tempAlbum;
             String tempArtist;
             String tempDuration;
-            String tempAlbumArt;
             Pair<String, String> tempPair;
             do {
                 tempTitle = cursor.getString(songTitle);
@@ -291,8 +274,6 @@ public final class Player {
                 tempPath = cursor.getString(songLocation);
                 albumRes.put(tempPath, tempAlbum);
                 tempDuration = cursor.getString(songDuration);
-                extractAlbumArt(tempPath, context);
-                tempAlbumArt = Uri.fromFile(new File(context.getCacheDir(), tempAlbum)).toString();
                 tempPair = new Pair<>(tempTitle, tempArtist);
                 result.put(cursor.getString(songLocation), tempPair);
                 music.put(
@@ -303,13 +284,10 @@ public final class Player {
                                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, tempArtist)
                                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
                                         TimeUnit.MILLISECONDS.convert(Integer.parseInt(tempDuration), TimeUnit.SECONDS))
-                                .putString(
-                                        MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,
-                                        tempAlbumArt
-                                )
-                                .putString(
-                                        MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,
-                                        tempAlbumArt
+                                .putBitmap(
+                                        MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
+                                        //extractAlbumArt(tempPath, context)
+                                        null
                                 )
                                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, tempTitle)
                                 .build());
@@ -386,18 +364,18 @@ public final class Player {
                 updateNextRemoteSong();
             } else
                 play(Uri.parse(currentTrackSequence.get(currentTrackNum)), currentContext);
-        } else {
+        } else
             pause();
-        }
         updateSavedPlaylist();
     }
 
     public static void pause() {
         try {
-            if (preferences.getBoolean("isRemoteLibrary", false)) pauseRemote();
-            mMediaBrowserHelper.getMediaController().getTransportControls().pause();
+            if (preferences.getBoolean("isRemoteLibrary", false))
+                pauseRemote();
+            isPlaying = false;
         } catch (IllegalStateException | NullPointerException e) {
-            return;
+            e.printStackTrace();
         }
 
     }
@@ -405,7 +383,7 @@ public final class Player {
     public static void resume() {
         try {
             if (!isPlaying) {
-                mMediaBrowserHelper.getTransportControls().play();
+                isPlaying = true;
                 boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
                 if (isRemote) {
                     mMediaBrowserHelper.getMediaController().setVolumeTo(0, (int) mMediaBrowserHelper.getMediaController().getFlags());
@@ -413,7 +391,7 @@ public final class Player {
                 }
             }
         } catch (IllegalStateException | NullPointerException e) {
-            return;
+            e.printStackTrace();
         }
     }
 
@@ -425,36 +403,19 @@ public final class Player {
         return isPlaying;
     }
 
+    public static void setIsPlaying(boolean state) {
+        isPlaying = state;
+    }
+
     public static Bitmap extractAlbumArt(String path, Context context) {
         android.media.MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-        byte [] data;
-        Bitmap bitmap = null;
-        File cacheDir = context.getCacheDir();
-        File f = new File(cacheDir, albumRes.get(path));
-        FileInputStream fis;
         try {
-            fis = new FileInputStream(f);
-            return BitmapFactory.decodeStream(fis);
-        } catch (FileNotFoundException e) {
-            try {
-                try {
-                    mmr.setDataSource(path);
-                    data = mmr.getEmbeddedPicture();
-                } catch (IllegalArgumentException er) {
-                    return null;
-                }
-                if (data != null) {
-                    bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                    FileOutputStream out = new FileOutputStream(f);
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
-                    out.flush();
-                    out.close();
-                }
-            } catch(IOException | NullPointerException error) {
-                return null;
-            }
+            mmr.setDataSource(path);
+            InputStream is = new ByteArrayInputStream(mmr.getEmbeddedPicture());
+            return BitmapFactory.decodeStream(is);
+        } catch (Exception e) {
+            return BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
         }
-        return bitmap;
     }
 
     public static String getRoot() {
@@ -471,7 +432,8 @@ public final class Player {
         return result;
     }
 
-    public static MediaMetadataCompat getMetadata(Context context, String mediaId) {
+    public static MediaMetadataCompat getMetadata(Context context) {
+        String mediaId = currentTrackSequence.get(currentTrackNum);
         MediaMetadataCompat metadataWithoutBitmap = music.get(mediaId);
         Bitmap albumArt = extractAlbumArt(mediaId, context);
 

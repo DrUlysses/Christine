@@ -5,7 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.support.v4.media.MediaMetadataCompat;
 
 /**
@@ -64,9 +64,8 @@ public abstract class PlayerAdapter {
     protected abstract void onPlay();
 
     public final void pause() {
-        if (!mPlayOnAudioFocus) {
+        if (!mPlayOnAudioFocus)
             mAudioFocusHelper.abandonAudioFocus();
-        }
 
         unregisterAudioNoisyReceiver();
         onPause();

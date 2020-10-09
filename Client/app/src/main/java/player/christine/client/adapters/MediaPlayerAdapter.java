@@ -1,27 +1,33 @@
 package player.christine.client.adapters;
 
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
-import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.SystemClock;
+import androidx.annotation.RequiresApi;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.ExoPlaybackException;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.audio.AudioAttributes;
+
 import player.christine.client.musicplayer.PlaybackInfoListener;
 import player.christine.client.MainActivity;
-import player.christine.client.musicplayer.Player;
 
 /**
- * Exposes the functionality of the {@link MediaPlayer} and implements the {@link PlayerAdapter}
+ * Exposes the functionality of the {@link SimpleExoPlayer} and implements the {@link PlayerAdapter}
  * so that {@link MainActivity} can control music playback.
  */
 public final class MediaPlayerAdapter extends PlayerAdapter {
 
     private final Context mContext;
-    private MediaPlayer mMediaPlayer;
-    private String mFilename;
-    private PlaybackInfoListener mPlaybackInfoListener;
-    private MediaMetadataCompat mCurrentMedia;
+    private SimpleExoPlayer mMediaPlayer = null;
+    private String mFilename = null;
+    private PlaybackInfoListener mPlaybackInfoListener = null;
+    private MediaMetadataCompat mCurrentMedia = null;
     private int mState;
     private boolean mCurrentMediaPlayedToCompletion;
 
@@ -35,32 +41,43 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
         mPlaybackInfoListener = listener;
     }
 
-    /**
-     * Once the {@link MediaPlayer} is released, it can't be used again, and another one has to be
-     * created. In the onStop() method of the {@link MainActivity} the {@link MediaPlayer} is
-     * released. Then in the onStart() of the {@link MainActivity} a new {@link MediaPlayer}
-     * object has to be created. That's why this method is private, and called by load(int) and
-     * not the constructor.
-     */
-    private void initializeMediaPlayer() {
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void initializeMediaPlayer(Context context) {
         if (mMediaPlayer == null) {
-            mMediaPlayer = new MediaPlayer();
-            mMediaPlayer.setOnCompletionListener(mediaPlayer -> {
-                mPlaybackInfoListener.onPlaybackCompleted();
+            mMediaPlayer = new SimpleExoPlayer.Builder(context).build();
+            mMediaPlayer.setHandleAudioBecomingNoisy(true);
+            mMediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.CONTENT_TYPE_MUSIC)
+                    .build());
+            mMediaPlayer.addListener(new Player.EventListener() {
+                @Override
+                public void onPlaybackStateChanged(int state) {
+                    if (state == Player.STATE_ENDED) {
+                        mPlaybackInfoListener.onPlaybackCompleted();
 
-                // Set the state to "paused" because it most closely matches the state
-                // in MediaPlayer with regards to available state transitions compared
-                // to "stop".
-                // Paused allows: seekTo(), start(), pause(), stop()
-                // Stop allows: stop()
-                setNewState(PlaybackStateCompat.STATE_PAUSED);
+                        // Set the state to "paused" because it most closely matches the state
+                        // in MediaPlayer with regards to available state transitions compared
+                        // to "stop".
+                        // Paused allows: seekTo(), start(), pause(), stop()
+                        // Stop allows: stop()
+                        setNewState(PlaybackStateCompat.STATE_PAUSED);
+                    }
+                }
+
+                @Override
+                public void onPlayerError(ExoPlaybackException error) {
+                    throw new RuntimeException("Failed to open file: " + mFilename, error.getCause());
+                }
             });
         }
     }
 
     // Implements PlaybackControl.
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     public void playFromMedia(MediaMetadataCompat metadata) {
+        mCurrentMedia = metadata;
         playFile(metadata.getDescription().getMediaId());
     }
 
@@ -69,6 +86,7 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
         return mCurrentMedia;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void playFile(String filename) {
         boolean mediaChanged = (mFilename == null || !filename.equals(mFilename));
         if (mCurrentMediaPlayedToCompletion) {
@@ -78,29 +96,18 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
             mCurrentMediaPlayedToCompletion = false;
         }
         if (!mediaChanged) {
-            if (!isPlaying()) {
+            if (!isPlaying())
                 play();
-            }
             return;
-        } else {
+        } else
             release();
-        }
 
         mFilename = filename;
 
-        initializeMediaPlayer();
+        initializeMediaPlayer(mContext);
 
         try {
-            AssetFileDescriptor assetFileDescriptor = mContext.getAssets().openFd(mFilename);
-            mMediaPlayer.setDataSource(
-                    assetFileDescriptor.getFileDescriptor(),
-                    assetFileDescriptor.getStartOffset(),
-                    assetFileDescriptor.getLength());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to open file: " + mFilename, e);
-        }
-
-        try {
+            mMediaPlayer.addMediaItem(0, MediaItem.fromUri(mFilename));
             mMediaPlayer.prepare();
         } catch (Exception e) {
             throw new RuntimeException("Failed to open file: " + mFilename, e);
@@ -119,6 +126,7 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
 
     private void release() {
         if (mMediaPlayer != null) {
+            mMediaPlayer.stop();
             mMediaPlayer.release();
             mMediaPlayer = null;
         }
@@ -131,15 +139,15 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
 
     @Override
     protected void onPlay() {
-        if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
-            mMediaPlayer.start();
+        if (!isPlaying()) {
+            mMediaPlayer.play();
             setNewState(PlaybackStateCompat.STATE_PLAYING);
         }
     }
 
     @Override
     protected void onPause() {
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+        if (isPlaying()) {
             mMediaPlayer.pause();
             setNewState(PlaybackStateCompat.STATE_PAUSED);
         }
@@ -151,21 +159,17 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
 
         // Whether playback goes to completion, or whether it is stopped, the
         // mCurrentMediaPlayedToCompletion is set to true.
-        if (mState == PlaybackStateCompat.STATE_STOPPED) {
+        if (mState == PlaybackStateCompat.STATE_STOPPED)
             mCurrentMediaPlayedToCompletion = true;
-        }
 
         // Work around for MediaPlayer.getCurrentPosition() when it changes while not playing.
         final long reportPosition;
         if (mSeekWhileNotPlaying >= 0) {
             reportPosition = mSeekWhileNotPlaying;
-
-            if (mState == PlaybackStateCompat.STATE_PLAYING) {
+            if (mState == PlaybackStateCompat.STATE_PLAYING)
                 mSeekWhileNotPlaying = -1;
-            }
-        } else {
+        } else
             reportPosition = mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition();
-        }
 
         final PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
         stateBuilder.setActions(getAvailableActions());
@@ -214,9 +218,8 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
     @Override
     public void seekTo(long position) {
         if (mMediaPlayer != null) {
-            if (!mMediaPlayer.isPlaying()) {
+            if (!mMediaPlayer.isPlaying())
                 mSeekWhileNotPlaying = (int) position;
-            }
             mMediaPlayer.seekTo((int) position);
 
             // Set the state (to the current state) because the position changed and should
@@ -227,8 +230,7 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
 
     @Override
     public void setVolume(float volume) {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.setVolume(volume, volume);
-        }
+        if (mMediaPlayer != null)
+            mMediaPlayer.setVolume(volume);
     }
 }

@@ -8,14 +8,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
-import android.support.annotation.NonNull;
-import android.support.annotation.RequiresApi;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.ContextCompat;
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.app.NotificationCompat.MediaStyle;
-import android.support.v4.media.session.MediaButtonReceiver;
+import androidx.media.app.NotificationCompat.MediaStyle;
+import androidx.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
@@ -108,9 +108,8 @@ public class MediaNotificationManager {
                                                          MediaDescriptionCompat description) {
 
         // Create the (mandatory) notification channel when running on Android Oreo.
-        if (isAndroidOOrHigher()) {
+        if (isAndroidOOrHigher())
             createChannel();
-        }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(mService, CHANNEL_ID);
         builder.setStyle(
@@ -173,9 +172,8 @@ public class MediaNotificationManager {
                     new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
             mNotificationManager.createNotificationChannel(mChannel);
             Log.d(TAG, "createChannel: New channel created");
-        } else {
+        } else
             Log.d(TAG, "createChannel: Existing channel reused");
-        }
     }
 
     private boolean isAndroidOOrHigher() {

@@ -38,11 +38,10 @@ public class ArtistsArrayAdapter extends BaseAdapter {
     public View getView(int position, View convertView, ViewGroup parent) {
         final View result;
 
-        if (convertView == null) {
+        if (convertView == null)
             result = LayoutInflater.from(parent.getContext()).inflate(R.layout.main_artists_list_item, parent, false);
-        } else {
+        else
             result = convertView;
-        }
 
         String item = (String) getItem(position);
         ((TextView) result.findViewById(R.id.main_artists_list_item_name)).setText(item);

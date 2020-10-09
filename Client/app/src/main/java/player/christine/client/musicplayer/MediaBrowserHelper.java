@@ -3,10 +3,10 @@ package player.christine.client.musicplayer;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.RemoteException;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v4.media.MediaBrowserServiceCompat;
+import androidx.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaControllerCompat.Callback;
@@ -104,9 +104,8 @@ public class MediaBrowserHelper {
 
     @NonNull
     protected final MediaControllerCompat getMediaController() {
-        if (mMediaController == null) {
+        if (mMediaController == null)
             throw new IllegalStateException("MediaController is null!");
-        }
         return mMediaController;
     }
 
@@ -134,24 +133,20 @@ public class MediaBrowserHelper {
             // Update with the latest metadata/playback state.
             if (mMediaController != null) {
                 final MediaMetadataCompat metadata = mMediaController.getMetadata();
-                if (metadata != null) {
+                if (metadata != null)
                     callback.onMetadataChanged(metadata);
-                }
 
                 final PlaybackStateCompat playbackState = mMediaController.getPlaybackState();
-                if (playbackState != null) {
+                if (playbackState != null)
                     callback.onPlaybackStateChanged(playbackState);
-                }
             }
         }
     }
 
     private void performOnAllCallbacks(@NonNull CallbackCommand command) {
-        for (Callback callback : mCallbackList) {
-            if (callback != null) {
+        for (Callback callback : mCallbackList)
+            if (callback != null)
                 command.perform(callback);
-            }
-        }
     }
 
     /**
@@ -192,7 +187,6 @@ public class MediaBrowserHelper {
     // Receives callbacks from the MediaBrowser when the MediaBrowserService has loaded new media
     // that is ready for playback.
     public class MediaBrowserSubscriptionCallback extends MediaBrowserCompat.SubscriptionCallback {
-
         @Override
         public void onChildrenLoaded(@NonNull String parentId,
                                      @NonNull List<MediaBrowserCompat.MediaItem> children) {
