@@ -107,6 +107,8 @@ public class MusicService extends MediaBrowserServiceCompat {
             }
 
             mPreparedMedia = Player.getMetadata(MusicService.this);
+            if (mPreparedMedia == null)
+                return;
             mSession.setMetadata(mPreparedMedia);
 
             if (!mSession.isActive()) {
@@ -119,6 +121,8 @@ public class MusicService extends MediaBrowserServiceCompat {
             if (!isReadyToPlay())
                 // Nothing to play.
                 return;
+            if (mPreparedMedia == null)
+                onPrepare();
 
             Player.playCurrentSong();
 

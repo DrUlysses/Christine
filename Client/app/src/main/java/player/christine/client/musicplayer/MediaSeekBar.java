@@ -23,8 +23,7 @@ public class MediaSeekBar extends AppCompatSeekBar {
     private boolean mIsTracking = false;
     private OnSeekBarChangeListener mOnSeekBarChangeListener = new OnSeekBarChangeListener() {
         @Override
-        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        }
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {}
 
         @Override
         public void onStartTrackingTouch(SeekBar seekBar) {
@@ -108,7 +107,7 @@ public class MediaSeekBar extends AppCompatSeekBar {
             // way to do that is to create a ValueAnimator to update it so the bar reaches
             // the end of the media the same time as playback gets there (or close enough).
             if (state != null && state.getState() == PlaybackStateCompat.STATE_PLAYING) {
-                int timeToEnd = (int) ((getMax() - progress) / state.getPlaybackSpeed());
+                long timeToEnd = (long) ((getMax() - progress) / state.getPlaybackSpeed());
                 if (timeToEnd < 0)
                     timeToEnd = 0;
                 mProgressAnimator = ValueAnimator.ofInt(progress, getMax())

@@ -40,7 +40,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -241,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
         preferencesEditor.apply();
         invalidateOptionsMenu();
         Toast.makeText(getApplicationContext(), R.string.disconnected, Toast.LENGTH_LONG).show();
-        Player.setSongList(Player.fillSongList(this));
+        Player.setSongList(Player.fillSongList());
         Player.setArtistsSongsList(Player.fillArtistsSongsList());
         viewPager.setAdapter(new ViewPagerAdapter(this));
         tabLayout.setupWithViewPager(viewPager);
@@ -257,7 +259,7 @@ public class MainActivity extends AppCompatActivity {
         preferencesEditor.apply();
         invalidateOptionsMenu();
         Toast.makeText(getApplicationContext(), R.string.error_connecting, Toast.LENGTH_LONG).show();
-        Player.setSongList(Player.fillSongList(this));
+        Player.setSongList(Player.fillSongList());
         Player.setArtistsSongsList(Player.fillArtistsSongsList());
         viewPager.setAdapter(new ViewPagerAdapter(this));
         tabLayout.setupWithViewPager(viewPager);
@@ -391,23 +393,14 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
-    public static void changePlayingSong(String title, String artist, String path) {
+    public static void changePlayingSong(String title, String artist, Bitmap bitmap) {
         String tempName = title + " - " + artist;
 
         songNameView.setText(tempName);
         minimizedSongNameView.setText(tempName);
 
-        android.media.MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-        mmr.setDataSource(path);
-        byte[] data = mmr.getEmbeddedPicture();
-        if (data != null) {
-            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-            coverView.setImageBitmap(bitmap); //associated cover art in bitmap
-            mininizedCoverView.setImageBitmap(bitmap);
-        } else {
-            coverView.setImageDrawable(null);
-            mininizedCoverView.setImageDrawable(null);
-        }
+        coverView.setImageBitmap(bitmap);
+        mininizedCoverView.setImageBitmap(bitmap);
         playerLayout.setPanelState(SlidingUpPanelLayout.PanelState.EXPANDED);
     }
 
@@ -489,11 +482,12 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
-            if (mediaMetadata == null) {
+            if (mediaMetadata == null)
                 return;
-            }
             String tempName = mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE) +
                     " - " + mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST);
+            if (tempName.equals(Player.getCurrentSongName()))
+                return;
             songNameView.setText(tempName);
             minimizedSongNameView.setText(tempName);
             Bitmap bitmap = Player.extractAlbumArt(

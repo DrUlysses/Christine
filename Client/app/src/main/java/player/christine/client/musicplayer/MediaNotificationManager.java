@@ -123,7 +123,7 @@ public class MediaNotificationManager {
                                         mService,
                                         PlaybackStateCompat.ACTION_STOP)))
                 .setColor(ContextCompat.getColor(mService, R.color.colorAccent))
-                .setSmallIcon(R.drawable.ic_stat_image_audiotrack)
+                .setSmallIcon(R.mipmap.ic_launcher)
                 // Pending intent that is fired when user clicks on notification.
                 .setContentIntent(createContentIntent())
                 // Title - Usually Song name.

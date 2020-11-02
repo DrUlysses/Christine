@@ -1,6 +1,7 @@
 package player.christine.client.musicplayer;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -34,6 +35,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -68,7 +70,7 @@ public final class Player {
         preferences  = currentContext.getSharedPreferences("Preferences", Context.MODE_PRIVATE);
         currentSongs = new TreeMap<>();
         currentArtistsSongs = new TreeMap<>();
-        setSongList(fillSongList(currentContext));
+        setSongList(fillSongList());
         setArtistsSongsList(fillArtistsSongsList());
         isPlaying = false;
         currentTrackNum = preferences.getInt("currentTrackNum", 0);
@@ -98,6 +100,7 @@ public final class Player {
         Set<String> tempList = new HashSet<>(currentTrackSequence.values());
         preferencesEditor.putStringSet("currentTrackSequence", tempList);
         preferencesEditor.apply();
+        //mMediaBrowserHelper.getMediaController().addQueueItem();
     }
 
     public static void setCurrentContext(Context context) {
@@ -148,7 +151,7 @@ public final class Player {
         currentContext = context;
         String title = currentSongs.get(currentTrackSequence.get(currentTrackNum)).first;
         String artist = currentSongs.get(currentTrackSequence.get(currentTrackNum)).second;
-        MainActivity.changePlayingSong(title, artist, songPath.toString());
+        MainActivity.changePlayingSong(title, artist, extractAlbumArt(songPath.toString(), context));
         isPlaying = true;
         if (preferences.getBoolean("isRemoteLibrary", false))
             mMediaBrowserHelper.getMediaController().setVolumeTo(0, (int) mMediaBrowserHelper.getMediaController().getFlags());
@@ -166,6 +169,7 @@ public final class Player {
         updateSavedPlaylist();
         updateRemotePlaylist();
         playCurrentSong();
+        mMediaBrowserHelper.getTransportControls().play();
     }
 
     public static void playSongFromArtistList(int position) {
@@ -180,6 +184,7 @@ public final class Player {
         updateSavedPlaylist();
         updateRemotePlaylist();
         playCurrentSong();
+        mMediaBrowserHelper.getTransportControls().play();
     }
 
     private static void updateRemotePlaylist() {
@@ -243,16 +248,18 @@ public final class Player {
     public static void setSongList(SortedMap<String, Pair<String, String>> songs) {
         currentTracksAmount = songs.size();
         currentSongs = songs;
+        music.clear();
     }
 
     public static void setArtistsSongsList(SortedMap<String, SortedMap<String, String>> artistsSongs) {
         currentArtistsSongs = artistsSongs;
     }
 
-    public static SortedMap<String, Pair<String, String>> fillSongList(Context context) {
+    public static SortedMap<String, Pair<String, String>> fillSongList() {
         ContentResolver contentResolver = currentContext.getContentResolver();
-        Uri songUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        Cursor cursor = contentResolver.query(songUri, null, null, null, null);
+        Uri songsUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+        Cursor cursor = contentResolver.query(songsUri, null, null, null, null);
+        // [path [title, artist]]
         SortedMap<String, Pair<String, String>> result = new TreeMap<>();
 
         if (cursor != null && cursor.moveToFirst()) {
@@ -283,7 +290,7 @@ public final class Player {
                                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, tempAlbum)
                                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, tempArtist)
                                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
-                                        TimeUnit.MILLISECONDS.convert(Integer.parseInt(tempDuration), TimeUnit.SECONDS))
+                                        TimeUnit.MILLISECONDS.convert(Integer.parseInt(tempDuration), TimeUnit.MILLISECONDS))
                                 .putBitmap(
                                         MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
                                         //extractAlbumArt(tempPath, context)
@@ -403,8 +410,10 @@ public final class Player {
         return isPlaying;
     }
 
-    public static void setIsPlaying(boolean state) {
-        isPlaying = state;
+    public static String getCurrentSongName() {
+        String title = currentSongs.get(currentTrackSequence.get(currentTrackNum)).first;
+        String artist = currentSongs.get(currentTrackSequence.get(currentTrackNum)).second;
+        return title + " - " + artist;
     }
 
     public static Bitmap extractAlbumArt(String path, Context context) {
@@ -433,8 +442,39 @@ public final class Player {
     }
 
     public static MediaMetadataCompat getMetadata(Context context) {
-        String mediaId = currentTrackSequence.get(currentTrackNum);
-        MediaMetadataCompat metadataWithoutBitmap = music.get(mediaId);
+        String mediaId;
+        MediaMetadataCompat metadataWithoutBitmap;
+        boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
+        if (isRemote) {
+            mediaId = currentRemoteSongPath.toString();
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            retriever.setDataSource(mediaId);
+            metadataWithoutBitmap = new MediaMetadataCompat.Builder()
+                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM,
+                            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM))
+                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST,
+                            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST))
+                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
+                            TimeUnit.MILLISECONDS.convert(
+                                    Integer.parseInt(
+                                            retriever.extractMetadata(
+                                                    MediaMetadataRetriever.METADATA_KEY_DURATION)),
+                                    TimeUnit.MILLISECONDS))
+                    .putBitmap(
+                            MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
+                            //extractAlbumArt(tempPath, context)
+                            null
+                    )
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE,
+                            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE))
+                    .build();
+        } else {
+            mediaId = currentTrackSequence.get(currentTrackNum);
+            metadataWithoutBitmap = music.get(mediaId);
+            if (metadataWithoutBitmap == null)
+                return null;
+        }
         Bitmap albumArt = extractAlbumArt(mediaId, context);
 
         // Since MediaMetadataCompat is immutable, we need to create a copy to set the album art.

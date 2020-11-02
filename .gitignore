@@ -13,3 +13,4 @@ Client/app/build/
 
 .cache*
 *.pyc
+Client/gradle/
