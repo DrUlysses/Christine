@@ -1,5 +1,6 @@
 package player.christine.client;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -31,6 +32,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -129,17 +131,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem item = findViewById(R.id.play_on_server_checkbox);
+        boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
+        if (item != null)
+            item.setVisible(isRemote);
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.options_menu, menu);
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-        if (isRemote && !mSocket.connected()) {
-            initializeSocket();
-            mSocket.connect();
-        }
+        if (isRemote) {
+            menu.findItem(R.id.play_on_server_checkbox).setVisible(true);
+            if (!mSocket.connected()) {
+                initializeSocket();
+                mSocket.connect();
+            }
+        } else
+            menu.findItem(R.id.play_on_server_checkbox).setVisible(false);
         menu.findItem(R.id.remote_library_checkbox).setChecked(isRemote);
         return super.onCreateOptionsMenu(menu);
     }
 
+    @SuppressLint("NonConstantResourceId")
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -183,6 +199,15 @@ public class MainActivity extends AppCompatActivity {
                 if (mSocket.connected())
                     mSocket.emit("check_music_folder");
                 return true;
+            case R.id.play_on_server_checkbox:
+                if (mSocket.connected())
+                    if (item.isChecked()) {
+                        mSocket.emit("unmute_server");
+                        Player.setMuted(false);
+                    } else {
+                        mSocket.emit("mute_server");
+                        Player.setMuted(true);
+                    }
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -196,8 +221,8 @@ public class MainActivity extends AppCompatActivity {
         mSocket.on(Socket.EVENT_CONNECT_ERROR, onConnectError);
         mSocket.on(Socket.EVENT_CONNECT_TIMEOUT, onConnectError);
         mSocket.on("status", onStatus);
-        mSocket.on("is_playing", onIsPlaying);
         mSocket.on("new_ones", onNewSongsAdded);
+        mSocket.on("play_on", onPlayOn);
     }
 
     private void initializeVariables() {
@@ -230,7 +255,8 @@ public class MainActivity extends AppCompatActivity {
         preferencesEditor.putBoolean("isRemoteLibrary", true);
         preferencesEditor.apply();
         invalidateOptionsMenu();
-        updateRemoteLists();
+        if (!updateRemoteLists())
+            mSocket.disconnect();
         Toast.makeText(getApplicationContext(), R.string.connected, Toast.LENGTH_LONG).show();
         viewPager.setAdapter(new ViewPagerAdapter(this));
         tabLayout.setupWithViewPager(viewPager);
@@ -254,11 +280,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Emitter.Listener onConnectError = args -> runOnUiThread(() -> {
+        Toast.makeText(getApplicationContext(), R.string.error_connecting, Toast.LENGTH_LONG).show();
         preferencesEditor = preferences.edit();
         preferencesEditor.putBoolean("isRemoteLibrary", false);
         preferencesEditor.apply();
         invalidateOptionsMenu();
-        Toast.makeText(getApplicationContext(), R.string.error_connecting, Toast.LENGTH_LONG).show();
+        Toast.makeText(getApplicationContext(), R.string.disconnected, Toast.LENGTH_LONG).show();
         Player.setSongList(Player.fillSongList());
         Player.setArtistsSongsList(Player.fillArtistsSongsList());
         viewPager.setAdapter(new ViewPagerAdapter(this));
@@ -269,8 +296,10 @@ public class MainActivity extends AppCompatActivity {
         JSONObject data = (JSONObject) args[0];
         String status;
         Integer time;
+        Boolean isOnClient;
         try {
             time = data.getInt("current_time");
+            Player.mMediaBrowserHelper.getTransportControls().seekTo(time);
             status = data.getString("status");
             if (status.equals("true")) {
                 status = "playing";
@@ -281,29 +310,8 @@ public class MainActivity extends AppCompatActivity {
                 Player.setIsRemotePlaying(false);
                 Player.mMediaBrowserHelper.getTransportControls().pause();
             }
-            Toast.makeText(getApplicationContext(), status, Toast.LENGTH_SHORT).show();
-        } catch (JSONException e) {
-            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
-            mSocket.disconnect();
-        }
-    });
-
-    private Emitter.Listener onIsPlaying = args -> runOnUiThread(() -> {
-        JSONObject data = (JSONObject) args[0];
-        String status;
-        Integer time;
-        try {
-            time = data.getInt("current_time");
-            status = data.getString("status");
-            if (status.equals("true")) {
-                status = "playing";
-                Player.setIsRemotePlaying(true);
-                Player.mMediaBrowserHelper.getTransportControls().play();
-            } else if (status.equals("false")) {
-                status = "paused";
-                Player.setIsRemotePlaying(false);
-                Player.mMediaBrowserHelper.getTransportControls().pause();
-            }
+            isOnClient = data.getBoolean("is_on_client");
+            Player.setMuted(isOnClient);
             Toast.makeText(getApplicationContext(), status, Toast.LENGTH_SHORT).show();
         } catch (JSONException e) {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -317,6 +325,17 @@ public class MainActivity extends AppCompatActivity {
         try {
             newOnes = data.getInt("new_ones");
             Toast.makeText(getApplicationContext(), "Added new songs ("  + newOnes + ")", Toast.LENGTH_SHORT).show();
+        } catch (JSONException e) {
+            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    });
+
+    private Emitter.Listener onPlayOn = args -> runOnUiThread(() -> {
+        JSONObject data = (JSONObject) args[0];
+        Boolean isOnClient;
+        try {
+            isOnClient = data.getBoolean("is_on_client");
+            Toast.makeText(getApplicationContext(), "Playing on client is "  + isOnClient, Toast.LENGTH_SHORT).show();
         } catch (JSONException e) {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
         }

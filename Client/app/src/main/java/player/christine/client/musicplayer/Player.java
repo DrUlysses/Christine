@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.provider.MediaStore;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
@@ -54,7 +55,6 @@ public final class Player {
     public static LinkedHashMap<Integer, String> currentTrackSequence;
     public static SortedMap<String, Pair<String, String>> currentSongs; // [path <title, artist>]
     public static SortedMap<String, SortedMap<String, String>> currentArtistsSongs;
-    private static final TreeMap<String, MediaMetadataCompat> music = new TreeMap<>();
     private static final HashMap<String, String> albumRes = new HashMap<>(); // [id (path), album]
     private static SharedPreferences preferences;
     private static SharedPreferences.Editor preferencesEditor;
@@ -157,6 +157,13 @@ public final class Player {
             mMediaBrowserHelper.getMediaController().setVolumeTo(0, (int) mMediaBrowserHelper.getMediaController().getFlags());
     }
 
+    public static void setMuted(boolean state) {
+        if (state)
+            mMediaBrowserHelper.getMediaController().setVolumeTo(0, (int) mMediaBrowserHelper.getMediaController().getFlags());
+        else
+            mMediaBrowserHelper.getMediaController().setVolumeTo(100, (int) mMediaBrowserHelper.getMediaController().getFlags());
+    }
+
     public static void playSongFromList(int position) {
         // get file name and send it to new view
         currentTrackNum = position;
@@ -248,7 +255,18 @@ public final class Player {
     public static void setSongList(SortedMap<String, Pair<String, String>> songs) {
         currentTracksAmount = songs.size();
         currentSongs = songs;
-        music.clear();
+        updateCurrentRemoteSong();
+        // get file name and send it to new view
+        currentTrackNum = 0;
+        // Oneline command is here too long, good old one is shorter
+        List<String> songsPaths = new ArrayList<>(currentSongs.keySet());
+        Collections.shuffle(songsPaths);
+        currentTracksAmount = currentSongs.size();
+        if (currentTrackSequence == null)
+            currentTrackSequence = new LinkedHashMap<>();
+        currentTrackSequence.clear();
+        for (int i = currentTrackNum; i < currentTracksAmount; i++)
+            currentTrackSequence.put(i, songsPaths.get(i));
     }
 
     public static void setArtistsSongsList(SortedMap<String, SortedMap<String, String>> artistsSongs) {
@@ -267,12 +285,10 @@ public final class Player {
             int songAlbum = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
             int songArtist = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
             int songLocation = cursor.getColumnIndex(MediaStore.Audio.Media.DATA);
-            int songDuration = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
             String tempPath;
             String tempTitle;
             String tempAlbum;
             String tempArtist;
-            String tempDuration;
             Pair<String, String> tempPair;
             do {
                 tempTitle = cursor.getString(songTitle);
@@ -280,24 +296,8 @@ public final class Player {
                 tempArtist = cursor.getString(songArtist);
                 tempPath = cursor.getString(songLocation);
                 albumRes.put(tempPath, tempAlbum);
-                tempDuration = cursor.getString(songDuration);
                 tempPair = new Pair<>(tempTitle, tempArtist);
                 result.put(cursor.getString(songLocation), tempPair);
-                music.put(
-                        tempPath,
-                        new MediaMetadataCompat.Builder()
-                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, tempPath)
-                                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, tempAlbum)
-                                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, tempArtist)
-                                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
-                                        TimeUnit.MILLISECONDS.convert(Integer.parseInt(tempDuration), TimeUnit.MILLISECONDS))
-                                .putBitmap(
-                                        MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
-                                        //extractAlbumArt(tempPath, context)
-                                        null
-                                )
-                                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, tempTitle)
-                                .build());
             } while (cursor.moveToNext());
             cursor.close();
         }
@@ -433,10 +433,15 @@ public final class Player {
 
     public static List<MediaBrowserCompat.MediaItem> getMediaItems() {
         List<MediaBrowserCompat.MediaItem> result = new ArrayList<>();
-        for (MediaMetadataCompat metadata : music.values()) {
-            result.add(
-                    new MediaBrowserCompat.MediaItem(
-                            metadata.getDescription(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+        for (String songPath : currentTrackSequence.values()) {
+            AsyncTask.execute(() -> {
+                try {
+                    result.add(new MediaBrowserCompat.MediaItem(getMetadataWithoutBitmap(songPath)
+                            .getDescription(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                } catch (Exception e) {
+                    System.out.print("Failed to load " + songPath);
+                }
+            });
         }
         return result;
     }
@@ -445,36 +450,42 @@ public final class Player {
         String mediaId;
         MediaMetadataCompat metadataWithoutBitmap;
         boolean isRemote = preferences.getBoolean("isRemoteLibrary", false);
-        if (isRemote) {
-            mediaId = currentRemoteSongPath.toString();
-            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-            retriever.setDataSource(mediaId);
-            metadataWithoutBitmap = new MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM,
-                            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM))
-                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST,
-                            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST))
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
-                            TimeUnit.MILLISECONDS.convert(
-                                    Integer.parseInt(
-                                            retriever.extractMetadata(
-                                                    MediaMetadataRetriever.METADATA_KEY_DURATION)),
-                                    TimeUnit.MILLISECONDS))
-                    .putBitmap(
-                            MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
-                            //extractAlbumArt(tempPath, context)
-                            null
-                    )
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE,
-                            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE))
-                    .build();
-        } else {
-            mediaId = currentTrackSequence.get(currentTrackNum);
-            metadataWithoutBitmap = music.get(mediaId);
-            if (metadataWithoutBitmap == null)
+        if (isRemote)
+            if (currentRemoteSongPath == null)
                 return null;
+            else
+                mediaId = currentRemoteSongPath.toString();
+        else
+            mediaId = currentTrackSequence.get(currentTrackNum);
+
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        try {
+            retriever.setDataSource(mediaId);
+        } catch (Exception e) {
+            return null;
         }
+        metadataWithoutBitmap = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM,
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM))
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST,
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST))
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
+                        TimeUnit.MILLISECONDS.convert(
+                                Integer.parseInt(
+                                        retriever.extractMetadata(
+                                                MediaMetadataRetriever.METADATA_KEY_DURATION)),
+                                TimeUnit.MILLISECONDS))
+                .putBitmap(
+                        MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
+                        //extractAlbumArt(tempPath, context)
+                        null
+                )
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE,
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE))
+                .build();
+        if (metadataWithoutBitmap == null)
+            return null;
         Bitmap albumArt = extractAlbumArt(mediaId, context);
 
         // Since MediaMetadataCompat is immutable, we need to create a copy to set the album art.
@@ -495,5 +506,31 @@ public final class Player {
                 metadataWithoutBitmap.getLong(MediaMetadataCompat.METADATA_KEY_DURATION));
         builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, albumArt);
         return builder.build();
+    }
+
+    private static MediaMetadataCompat getMetadataWithoutBitmap(String path) {
+        MediaMetadataCompat metadataWithoutBitmap;
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(path);
+        metadataWithoutBitmap = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, path)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM,
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM))
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST,
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST))
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
+                        TimeUnit.MILLISECONDS.convert(
+                                Integer.parseInt(
+                                        retriever.extractMetadata(
+                                                MediaMetadataRetriever.METADATA_KEY_DURATION)),
+                                TimeUnit.MILLISECONDS))
+                .putBitmap(
+                        MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
+                        null
+                )
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE,
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE))
+                .build();
+        return metadataWithoutBitmap;
     }
 }

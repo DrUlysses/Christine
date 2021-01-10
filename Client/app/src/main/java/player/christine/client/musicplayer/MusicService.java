@@ -2,6 +2,7 @@ package player.christine.client.musicplayer;
 
 import android.app.Notification;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -82,7 +83,15 @@ public class MusicService extends MediaBrowserServiceCompat {
     public void onLoadChildren(
             @NonNull final String parentMediaId,
             @NonNull final Result<List<MediaBrowserCompat.MediaItem>> result) {
-        result.sendResult(Player.getMediaItems());
+        try {
+            result.sendResult(Player.getMediaItems());
+        } catch (Exception err) {
+            AsyncTask.execute(() -> {
+                Player.setSongList(Player.fillSongList());
+                Player.setArtistsSongsList(Player.fillArtistsSongsList());
+            });
+            result.sendResult(Player.getMediaItems());
+        }
     }
 
     // MediaSession Callback: Transport Controls -> MediaPlayerAdapter
